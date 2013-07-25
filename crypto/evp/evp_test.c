@@ -433,12 +433,70 @@ static int test_cipher(const char *cipher,const unsigned char *key,int kn,
 		       int encdec)
     {
     const EVP_CIPHER *c;
+    EVP_AEAD_CTX ctx;
+    char have_aead = 0;
 
     c=EVP_get_cipherbyname(cipher);
     if(!c)
 	return 0;
 
     test1(c,key,kn,iv,in,plaintext,pn,ciphertext,cn,aad,an,tag,tn,encdec);
+
+    if (strcmp(cipher, "aes-128-gcm") == 0)
+	{
+	    if (!EVP_AEAD_CTX_init(&ctx, EVP_aead_aes_128_gcm(), key, kn, NULL))
+		    {
+		    fprintf(stderr,"EVP_AEAD_CTX_init failed for %s\n", cipher);
+		    ERR_print_errors_fp(stderr);
+		    EXIT(200);
+		    }
+	    have_aead = 1;
+	}
+
+
+    if (have_aead)
+	{
+	unsigned char *out, *input;
+	size_t out_len;
+
+	out = OPENSSL_malloc(cn + tn);
+
+	input = OPENSSL_malloc(cn + tn);
+	memcpy(input, ciphertext, cn);
+	memcpy(input + cn, tag, tn);
+
+	out_len = EVP_AEAD_CTX_seal(&ctx, out, cn+tn, iv, in, plaintext, pn, aad, an);
+	if (out_len != cn+tn)
+		{
+		fprintf(stderr,"EVP_AEAD_CTX_seal failed: returned %d vs %d\n", (int) out_len, cn+tn);
+		ERR_print_errors_fp(stderr);
+		EXIT(202);
+		}
+	if (memcmp(out, input, cn+tn) != 0)
+		{
+		fprintf(stderr,"EVP_AEAD_CTX_seal produced incorrect output");
+		ERR_print_errors_fp(stderr);
+		EXIT(203);
+		}
+
+	out_len = EVP_AEAD_CTX_open(&ctx, out, cn, iv, in, input, cn + tn, aad, an);
+	if (out_len != pn)
+		{
+		fprintf(stderr,"EVP_AEAD_CTX_open failed: returned %d vs %d\n", (int) out_len, pn);
+		ERR_print_errors_fp(stderr);
+		EXIT(204);
+		}
+	if (memcmp(out, plaintext, pn) != 0)
+		{
+		fprintf(stderr,"EVP_AEAD_CTX_open produced incorrect output");
+		ERR_print_errors_fp(stderr);
+		EXIT(205);
+		}
+
+	OPENSSL_free(out);
+	OPENSSL_free(input);
+	EVP_AEAD_CTX_cleanup(&ctx);
+	}
 
     return 1;
     }

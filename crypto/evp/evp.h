@@ -1419,6 +1419,8 @@ void ERR_load_EVP_strings(void);
 /* Error codes for the EVP functions. */
 
 /* Function codes. */
+#define EVP_F_AEAD_AES_128_GCM_OPEN			 181
+#define EVP_F_AEAD_AES_128_GCM_SEAL			 182
 #define EVP_F_AESNI_INIT_KEY				 165
 #define EVP_F_AESNI_XTS_CIPHER				 176
 #define EVP_F_AES_INIT_KEY				 133
