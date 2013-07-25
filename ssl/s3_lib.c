@@ -161,6 +161,11 @@ const char ssl3_version_str[]="SSLv3" OPENSSL_VERSION_PTEXT;
 
 #define SSL3_NUM_CIPHERS	(sizeof(ssl3_ciphers)/sizeof(SSL_CIPHER))
 
+/* FIXED_NONCE_LEN is a macro that results in the correct value to set the
+ * fixed nonce length in SSL_CIPHER.algorithms2. It's the inverse of
+ * SSL_CIPHER_AEAD_FIXED_NONCE_LEN. */
+#define FIXED_NONCE_LEN(x) ((x/2)<<24)
+
 /* list of available SSLv3 ciphers (sorted by id) */
 OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 
@@ -1831,7 +1836,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_AEAD,
 	SSL_TLSV1_2,
 	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256,
+	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256|SSL_CIPHER_ALGORITHM2_AEAD|FIXED_NONCE_LEN(4),
 	128,
 	128,
 	},
