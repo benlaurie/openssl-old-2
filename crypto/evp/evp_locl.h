@@ -345,3 +345,12 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx, const char *pass, int passlen,
                          ASN1_TYPE *param,
 			 const EVP_CIPHER *c, const EVP_MD *md, int en_de);
+
+/* EVP_AEAD_CTX_type returns a pointer to a value of the given type from an
+ * EVP_AEAD_CTX. If the type is small enough to fit within the space of the
+ * EVP_AEAD_CTX then the return value points directly into |ctx|. Otherwise, a
+ * pointer is read from |ctx| and cast to the given type. */
+#define EVP_AEAD_CTX_type(type, ctx) \
+	(sizeof(type) > sizeof(ctx->padding) ? \
+	 ((type*) *((void**) &ctx->padding[0])) : \
+	 ((type*) &ctx->padding[0]))

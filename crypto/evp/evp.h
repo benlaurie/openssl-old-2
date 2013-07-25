@@ -1294,6 +1294,120 @@ void EVP_PKEY_meth_set_ctrl(EVP_PKEY_METHOD *pmeth,
 	int (*ctrl_str)(EVP_PKEY_CTX *ctx,
 					const char *type, const char *value));
 
+/* Authenticated Encryption with Additional Data.
+ *
+ * AEAD couples confidentiality and integrity in a single primtive. AEAD
+ * algorithms take a key and, optionally, a message independent IV and then can
+ * seal and open individual messages. Each message has a unique, per-message IV
+ * and optionally addition data which is authenticated but not included in the
+ * output. */
+
+struct evp_aead_ctx_st;
+
+/* EVP_AEAD represents a specific AEAD algorithm. */
+typedef struct evp_aead_st {
+	unsigned char version;
+	unsigned char key_len;
+	unsigned char iv_len;
+	unsigned char overhead;
+
+	int (*init) (struct evp_aead_ctx_st*, const unsigned char *key, size_t key_len);
+	void (*cleanup) (struct evp_aead_ctx_st*);
+
+	size_t (*seal) (const struct evp_aead_ctx_st *ctx,
+			unsigned char *out, size_t max_out_len,
+			const unsigned char *iv, size_t iv_len,
+			const unsigned char *in, size_t in_len,
+			const unsigned char *ad, size_t ad_len);
+
+	size_t (*open) (const struct evp_aead_ctx_st *ctx,
+			unsigned char *out, size_t max_out_len,
+			const unsigned char *iv, size_t iv_len,
+			const unsigned char *in, size_t in_len,
+			const unsigned char *ad, size_t ad_len);
+} EVP_AEAD;
+
+#ifndef OPENSSL_NO_AES
+/* EVP_aes_128_gcm is AES-128 in Galios Counter Mode. */
+const EVP_AEAD *EVP_aead_aes_128_gcm();
+#endif
+
+/* EVP_AEAD_key_length returns the length, in bytes, of the keys used by
+ * |aead|. */
+size_t EVP_AEAD_key_length(const EVP_AEAD *aead);
+
+/* EVP_AEAD_iv_length returns the length, in bytes, of the per-message IV for
+ * |aead|. */
+size_t EVP_AEAD_iv_length(const EVP_AEAD *aead);
+
+/* EVP_AEAD_max_overhead returns the maximum number of additional bytes added
+ * by the act of sealing data with |aead|. */
+size_t EVP_AEAD_max_overhead(const EVP_AEAD *aead);
+
+/* An EVP_AEAD_CTX represents an AEAD algorithm configured with a specific key
+ * and message-independent IV. */
+typedef struct evp_aead_ctx_st {
+	const EVP_AEAD *aead;
+	unsigned char padding[32];
+} EVP_AEAD_CTX;
+
+/* EVP_AEAD_init initializes |ctx| for the given AEAD algorithm from |impl|.
+ * The |impl| argument may be NULL to choose the default implementation.
+ * Returns 1 on success. Otherwise returns 0 and pushes to the error stack. */
+int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
+		      const unsigned char *key, size_t key_len,
+		      ENGINE *impl);
+
+/* EVP_AEAD_CTX_cleanup frees any data allocated by |ctx|. */
+void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
+
+/* EVP_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and
+ * authenticates |ad_len| bytes from |ad| and writes the result to |out|,
+ * returning the number of bytes written, or zero on error.
+ *
+ * This function may be called (with the same EVP_AEAD_CTX) concurrently with
+ * itself or EVP_AEAD_CTX_open.
+ *
+ * At most |max_out_len| bytes are written to |out| and, in order to ensure
+ * success, |max_out_len| should be |in_len| plus the result of
+ * EVP_AEAD_overhead.
+ *
+ * The length of |iv|, |iv_len|, must be equal to the result of
+ * EVP_AEAD_iv_length for this AEAD.
+ *
+ * EVP_AEAD_CTX_seal never results in a partial output. If |max_out_len| is
+ * insufficient, zero will be returned.
+ *
+ * If |in| and |out| alias then |out| must be <= |in|. */
+size_t EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx,
+			 unsigned char *out, size_t max_out_len,
+			 const unsigned char *iv, size_t iv_len,
+			 const unsigned char *in, size_t in_len,
+			 const unsigned char *ad, size_t ad_len);
+
+/* EVP_AEAD_CTX_open authenticates |in_len| bytes from |in| and |ad_len| bytes
+ * from |ad| and decrypts at most |in_len| bytes into |out|. It returns the
+ * number of bytes written, or zero on error.
+ *
+ * This function may be called (with the same EVP_AEAD_CTX) concurrently with
+ * itself or EVP_AEAD_CTX_open.
+ *
+ * At most |in_len| bytes are written to |out|. In order to ensure success,
+ * |max_out_len| should be at least |in_len|.
+ *
+ * The length of |iv|, |iv_len|, must be equal to the result of
+ * EVP_AEAD_iv_length for this AEAD.
+ *
+ * EVP_AEAD_CTX_open never results in a partial output. If |max_out_len| is
+ * insufficient, zero will be returned.
+ *
+ * If |in| and |out| alias then |out| must be <= |in|. */
+size_t EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx,
+			 unsigned char *out, size_t max_out_len,
+			 const unsigned char *iv, size_t iv_len,
+			 const unsigned char *in, size_t in_len,
+			 const unsigned char *ad, size_t ad_len);
+
 void EVP_add_alg_module(void);
 
 /* BEGIN ERROR CODES */
@@ -1321,6 +1435,7 @@ void ERR_load_EVP_strings(void);
 #define EVP_F_DSA_PKEY2PKCS8				 135
 #define EVP_F_ECDSA_PKEY2PKCS8				 129
 #define EVP_F_ECKEY_PKEY2PKCS8				 132
+#define EVP_F_EVP_AEAD_CTX_INIT				 180
 #define EVP_F_EVP_CIPHERINIT_EX				 123
 #define EVP_F_EVP_CIPHER_CTX_COPY			 163
 #define EVP_F_EVP_CIPHER_CTX_CTRL			 124
