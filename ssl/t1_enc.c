@@ -818,7 +818,7 @@ cipher_unavailable_err:
 /* tls1_enc encrypts/decrypts the record in |s->wrec| / |s->rrec|, respectively.
  *
  * Returns:
- *   0: (in non-constant time) if the record is publically invalid (i.e. too
+ *   0: (in non-constant time) if the record is publicly invalid (i.e. too
  *       short etc).
  *   1: if the record's padding is valid / the encryption was successful.
  *   -1: if the record's padding/AEAD-authenticator is invalid or, if sending,
