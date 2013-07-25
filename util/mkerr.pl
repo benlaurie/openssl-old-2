@@ -227,7 +227,7 @@ while (($hdr, $lib) = each %libinc)
 
 	    # Reduce argument lists to empty ()
 	    # fold round brackets recursively: (t(*v)(t),t) -> (t{}{},t) -> {}
-	    while(/\(.*\)/s) {
+	    while(/\(.+\)/s) {
 		s/\([^\(\)]+\)/\{\}/gs;
 		s/\(\s*\*\s*(\w+)\s*\{\}\s*\)/$1/gs;	#(*f{}) -> f
 	    }
