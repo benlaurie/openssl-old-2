@@ -452,7 +452,9 @@ struct ssl_cipher_st
 	unsigned long algorithm_ssl;	/* (major) protocol version */
 
 	unsigned long algo_strength;	/* strength and export flags */
-	unsigned long algorithm2;	/* Extra flags */
+	unsigned long algorithm2;	/* Extra flags. See SSL2_CF_* in ssl2.h
+					   and algorithm2 section in
+					   ssl_locl.h */
 	int strength_bits;		/* Number of bits really used */
 	int alg_bits;			/* Number of bits for algorithm */
 	};
@@ -848,6 +850,13 @@ int SRP_Calc_A_param(SSL *s);
 int SRP_generate_client_master_secret(SSL *s,unsigned char *master_key);
 
 #endif
+
+typedef struct ssl_aead_ctx
+	{
+	EVP_AEAD_CTX ctx;
+	unsigned char fixed_nonce[8];
+	unsigned char fixed_nonce_len, variable_nonce_len, tag_len;
+	} SSL_AEAD_CTX;
 
 #if defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_WIN32)
 #define SSL_MAX_CERT_LIST_DEFAULT 1024*30 /* 30k max cert list :-) */
@@ -1399,6 +1408,9 @@ struct ssl_st
 	/* These are the ones being used, the ones in SSL_SESSION are
 	 * the ones to be 'copied' into these ones */
 	int mac_flags; 
+	SSL_AEAD_CTX *aead_read_ctx;	/* AEAD context. If non-NULL, then
+					   |enc_read_ctx| and |read_hash| are
+					   ignored. */
 	EVP_CIPHER_CTX *enc_read_ctx;		/* cryptographic state */
 	EVP_MD_CTX *read_hash;		/* used for mac generation */
 #ifndef OPENSSL_NO_COMP
@@ -1407,6 +1419,9 @@ struct ssl_st
 	char *expand;
 #endif
 
+	SSL_AEAD_CTX *aead_write_ctx;	/* AEAD context. If non-NULL, then
+					   |enc_write_ctx| and |write_hash| are
+					   ignored. */
 	EVP_CIPHER_CTX *enc_write_ctx;		/* cryptographic state */
 	EVP_MD_CTX *write_hash;		/* used for mac generation */
 #ifndef OPENSSL_NO_COMP
@@ -2677,8 +2692,10 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_SSL_VERIFY_CERT_CHAIN			 207
 #define SSL_F_SSL_WRITE					 208
 #define SSL_F_TLS12_CHECK_PEER_SIGALG			 333
+#define SSL_F_TLS1_AEAD_CTX_INIT			 339
 #define SSL_F_TLS1_CERT_VERIFY_MAC			 286
 #define SSL_F_TLS1_CHANGE_CIPHER_STATE			 209
+#define SSL_F_TLS1_CHANGE_CIPHER_STATE_AEAD		 340
 #define SSL_F_TLS1_CHANGE_CIPHER_STATE_CIPHER		 338
 #define SSL_F_TLS1_CHECK_SERVERHELLO_TLSEXT		 274
 #define SSL_F_TLS1_ENC					 210
