@@ -1329,7 +1329,7 @@ typedef struct evp_aead_st {
 
 #ifndef OPENSSL_NO_AES
 /* EVP_aes_128_gcm is AES-128 in Galios Counter Mode. */
-const EVP_AEAD *EVP_aead_aes_128_gcm();
+const EVP_AEAD *EVP_aead_aes_128_gcm(void);
 #endif
 
 /* EVP_AEAD_key_length returns the length, in bytes, of the keys used by

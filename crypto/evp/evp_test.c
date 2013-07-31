@@ -426,10 +426,10 @@ static void test1(const EVP_CIPHER *c,const unsigned char *key,int kn,
 
 static int test_cipher(const char *cipher,const unsigned char *key,int kn,
 		       const unsigned char *iv,int in,
-		       const unsigned char *plaintext,int pn,
-		       const unsigned char *ciphertext,int cn,
+		       const unsigned char *plaintext,size_t pn,
+		       const unsigned char *ciphertext,size_t cn,
 		       const unsigned char *aad,int an,
-		       const unsigned char *tag,int tn,
+		       const unsigned char *tag,size_t tn,
 		       int encdec)
     {
     const EVP_CIPHER *c;
@@ -468,7 +468,7 @@ static int test_cipher(const char *cipher,const unsigned char *key,int kn,
 	out_len = EVP_AEAD_CTX_seal(&ctx, out, cn+tn, iv, in, plaintext, pn, aad, an);
 	if (out_len != cn+tn)
 		{
-		fprintf(stderr,"EVP_AEAD_CTX_seal failed: returned %d vs %d\n", (int) out_len, cn+tn);
+		fprintf(stderr,"EVP_AEAD_CTX_seal failed: returned %d vs %d\n", (int) out_len, (int)(cn+tn));
 		ERR_print_errors_fp(stderr);
 		EXIT(202);
 		}
@@ -482,7 +482,7 @@ static int test_cipher(const char *cipher,const unsigned char *key,int kn,
 	out_len = EVP_AEAD_CTX_open(&ctx, out, cn, iv, in, input, cn + tn, aad, an);
 	if (out_len != pn)
 		{
-		fprintf(stderr,"EVP_AEAD_CTX_open failed: returned %d vs %d\n", (int) out_len, pn);
+		fprintf(stderr,"EVP_AEAD_CTX_open failed: returned %d vs %d\n", (int) out_len, (int) pn);
 		ERR_print_errors_fp(stderr);
 		EXIT(204);
 		}

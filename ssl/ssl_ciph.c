@@ -540,8 +540,8 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	c=s->cipher;
 	if (c == NULL) return(0);
 
-	// This function doesn't deal with EVP_AEAD. See
-	// |ssl_cipher_get_aead_evp|.
+	/* This function doesn't deal with EVP_AEAD. See
+	 * |ssl_cipher_get_aead_evp|. */
 	if (c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) return(0);
 
 	if ((enc == NULL) || (md == NULL)) return(0);
