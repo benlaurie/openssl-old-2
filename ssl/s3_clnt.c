@@ -3577,9 +3577,7 @@ int ssl3_check_finished(SSL *s)
 	s->s3->tmp.reuse_message = 1;
 
 	if (s->s3->tmp.message_type == SSL3_MT_SUPPLEMENTAL_DATA)
-		{
 		return 3;
-		}
 	/* If we have no ticket it cannot be a resumed session. */
 	if (!s->session->tlsext_tick)
 		return 1;
