@@ -1056,7 +1056,7 @@ int MAIN(int argc, char *argv[])
 	EVP_PKEY *s_key = NULL, *s_dkey = NULL;
 	int no_cache = 0, ext_cache = 0;
 	int rev = 0, naccept = -1;
-    int c_no_resumption_on_reneg = 0;
+	int c_no_resumption_on_reneg = 0;
 #ifndef OPENSSL_NO_TLSEXT
 	EVP_PKEY *s_key2 = NULL;
 	X509 *s_cert2 = NULL;
@@ -3563,16 +3563,12 @@ static int authz_tlsext_cb(SSL *s, unsigned short ext_type,
 			   void *arg)
 	{
 	if (TLSEXT_TYPE_server_authz == ext_type)
-		{
 		client_provided_server_authz
 		  = memchr(in,	TLSEXT_AUTHZDATAFORMAT_dtcp, inlen) != NULL;
-		}
 
 	if (TLSEXT_TYPE_client_authz == ext_type)
-		{
 		client_provided_client_authz
 		  = memchr(in, TLSEXT_AUTHZDATAFORMAT_dtcp, inlen) != NULL;
-		}
 
 	return 1;
 	}
