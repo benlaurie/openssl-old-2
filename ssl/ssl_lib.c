@@ -1617,7 +1617,7 @@ err:
  * So far, only host_name types are defined (RFC 3546).
  */
 
-const char *SSL_get_servername(const SSL *s, const int type)
+const char *SSL_get_servername(const SSL *s, const enum tlsext_nametype type)
 	{
 	if (type != TLSEXT_NAMETYPE_host_name)
 		return NULL;
@@ -1627,11 +1627,11 @@ const char *SSL_get_servername(const SSL *s, const int type)
 		s->tlsext_hostname;
 	}
 
-int SSL_get_servername_type(const SSL *s)
+enum tlsext_nametype SSL_get_servername_type(const SSL *s)
 	{
 	if (s->session && (!s->tlsext_hostname ? s->session->tlsext_hostname : s->tlsext_hostname))
 		return TLSEXT_NAMETYPE_host_name;
-	return -1;
+	return TLSEXT_NAMETYPE_error;
 	}
 
 /* SSL_select_next_proto implements the standard protocol selection. It is

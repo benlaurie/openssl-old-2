@@ -265,7 +265,10 @@ extern "C" {
 #endif
 
 /* NameType value from RFC 3546 */
-#define TLSEXT_NAMETYPE_host_name 0
+enum tlsext_nametype {
+  TLSEXT_NAMETYPE_host_name = 0,
+  TLSEXT_NAMETYPE_error = 256
+};
 /* status request value from RFC 3546 */
 #define TLSEXT_STATUSTYPE_ocsp 1
 
@@ -310,8 +313,8 @@ extern "C" {
 
 #define TLSEXT_MAXLEN_host_name 255
 
-const char *SSL_get_servername(const SSL *s, const int type);
-int SSL_get_servername_type(const SSL *s);
+const char *SSL_get_servername(const SSL *s, const enum tlsext_nametype type);
+enum tlsext_nametype SSL_get_servername_type(const SSL *s);
 /* SSL_export_keying_material exports a value derived from the master secret,
  * as specified in RFC 5705. It writes |olen| bytes to |out| given a label and
  * optional context. (Since a zero length context is allowed, the |use_context|

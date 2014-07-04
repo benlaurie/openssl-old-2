@@ -387,7 +387,7 @@ static int MS_CALLBACK ssl_servername_cb(SSL *s, int *ad, void *arg)
 	{
 	tlsextctx * p = (tlsextctx *) arg;
 	const char * hn= SSL_get_servername(s, TLSEXT_NAMETYPE_host_name);
-	if (SSL_get_servername_type(s) != -1) 
+	if (SSL_get_servername_type(s) != TLSEXT_NAMETYPE_error)
  	        p->ack = !SSL_session_reused(s) && hn != NULL;
 	else 
 		BIO_printf(bio_err,"Can't use SSL_get_servername\n");
