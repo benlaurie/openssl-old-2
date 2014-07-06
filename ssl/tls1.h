@@ -336,8 +336,9 @@ int SSL_get_shared_sigalgs(SSL *s, int idx,
 
 int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain);
 
-#define SSL_set_tlsext_host_name(s,name) \
-SSL_ctrl(s,SSL_CTRL_SET_TLSEXT_HOSTNAME,TLSEXT_NAMETYPE_host_name,(char *)name)
+#ifndef OPENSSL_NO_TLSEXT
+int SSL_set_tlsext_host_name(SSL *s, const char *name);
+#endif  /* ndef OPENSSL_NO_TLSEXT */
 
 #define SSL_set_tlsext_debug_callback(ssl, cb) \
 SSL_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_DEBUG_CB,(void (*)(void))cb)

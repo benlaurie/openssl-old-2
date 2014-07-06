@@ -3338,6 +3338,30 @@ static char * MS_CALLBACK srp_password_from_info_cb(SSL *s, void *arg)
 
 static int ssl3_set_req_cert_type(CERT *c, const unsigned char *p, size_t len);
 
+int SSL_set_tlsext_host_name(SSL *s, const char *name)
+	{
+	if (s->tlsext_hostname != NULL) 
+		OPENSSL_free(s->tlsext_hostname);
+	s->tlsext_hostname = NULL;
+
+	if (name == NULL) 
+		return 1;
+
+	if (strlen(name) > TLSEXT_MAXLEN_host_name)
+		{
+		SSLerr(SSL_F_SSL3_CTRL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
+		return 0;
+		}
+
+	if ((s->tlsext_hostname = BUF_strdup(name)) == NULL)
+		{
+		SSLerr(SSL_F_SSL3_CTRL, ERR_R_INTERNAL_ERROR);
+		return 0;
+		}
+
+	return 1;
+	}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
 	int ret=0;
@@ -3499,33 +3523,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 #endif /* !OPENSSL_NO_ECDH */
 #ifndef OPENSSL_NO_TLSEXT
-	case SSL_CTRL_SET_TLSEXT_HOSTNAME:
- 		if (larg == TLSEXT_NAMETYPE_host_name)
-			{
-			if (s->tlsext_hostname != NULL) 
-				OPENSSL_free(s->tlsext_hostname);
-			s->tlsext_hostname = NULL;
-
-			ret = 1;
-			if (parg == NULL) 
-				break;
-			if (strlen((char *)parg) > TLSEXT_MAXLEN_host_name)
-				{
-				SSLerr(SSL_F_SSL3_CTRL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
-				return 0;
-				}
-			if ((s->tlsext_hostname = BUF_strdup((char *)parg)) == NULL)
-				{
-				SSLerr(SSL_F_SSL3_CTRL, ERR_R_INTERNAL_ERROR);
-				return 0;
-				}
-			}
-		else
-			{
-			SSLerr(SSL_F_SSL3_CTRL, SSL_R_SSL3_EXT_INVALID_SERVERNAME_TYPE);
-			return 0;
-			}
- 		break;
 	case SSL_CTRL_SET_TLSEXT_DEBUG_ARG:
 		s->tlsext_debug_arg=parg;
 		ret = 1;
