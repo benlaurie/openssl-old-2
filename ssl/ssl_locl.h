@@ -727,7 +727,9 @@ typedef struct ssl3_enc_method
 struct ssl_ctrl_method_st
 	{
 	unsigned int (*get_num_renegotiations)(SSL *s);
+	int (*dtls_get_timeout)(SSL *s, struct timeval *tv);
 	};
+
 unsigned int ssl3_get_num_renegotiations(SSL *s);
 
 
@@ -794,6 +796,7 @@ extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 extern const struct ssl_ctrl_method_st sslv2_ctrl;
 extern const struct ssl_ctrl_method_st sslv3_ctrl;
 extern const struct ssl_ctrl_method_st tlsv1_ctrl;
+extern const struct ssl_ctrl_method_st dtlsv1_ctrl;
 
 #define IMPLEMENT_tls_meth_func(version, func_name, s_accept, s_connect, \
 				s_get_meth, enc_data)			 \
@@ -982,7 +985,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
-		&sslv3_ctrl, \
+		&dtlsv1_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}
@@ -1183,7 +1186,6 @@ void dtls1_get_message_header(unsigned char *data, struct hm_header_st *msg_hdr)
 void dtls1_get_ccs_header(unsigned char *data, struct ccs_header_st *ccs_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
 long dtls1_default_timeout(void);
-struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft);
 int dtls1_check_timeout_num(SSL *s);
 int dtls1_handle_timeout(SSL *s);
 const SSL_CIPHER *dtls1_get_cipher(unsigned int u);

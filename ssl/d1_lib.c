@@ -282,12 +282,6 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
 
 	switch (cmd)
 		{
-	case DTLS_CTRL_GET_TIMEOUT:
-		if (dtls1_get_timeout(s, (struct timeval*) parg) != NULL)
-			{
-			ret = 1;
-			}
-		break;
 	case DTLS_CTRL_HANDLE_TIMEOUT:
 		ret = dtls1_handle_timeout(s);
 		break;
@@ -347,15 +341,13 @@ void dtls1_start_timer(SSL *s)
 	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &(s->d1->next_timeout));
 	}
 
-struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
+static int dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 	{
 	struct timeval timenow;
 
 	/* If no timeout is set, just return NULL */
 	if (s->d1->next_timeout.tv_sec == 0 && s->d1->next_timeout.tv_usec == 0)
-		{
-		return NULL;
-		}
+		return 0;
 
 	/* Get current time */
 	get_current_time(&timenow);
@@ -366,7 +358,7 @@ struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 		 s->d1->next_timeout.tv_usec <= timenow.tv_usec))
 		{
 		memset(timeleft, 0, sizeof(struct timeval));
-		return timeleft;
+		return 1;
 		}
 
 	/* Calculate time left until timer expires */
@@ -389,7 +381,7 @@ struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 		}
 	
 
-	return timeleft;
+	return 1;
 	}
 
 int dtls1_is_timer_expired(SSL *s)
@@ -397,7 +389,7 @@ int dtls1_is_timer_expired(SSL *s)
 	struct timeval timeleft;
 
 	/* Get time left until timeout, return false if no timer running */
-	if (dtls1_get_timeout(s, &timeleft) == NULL)
+	if (!dtls1_get_timeout(s, &timeleft))
 		{
 		return 0;
 		}
@@ -534,4 +526,17 @@ static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len)
 static int dtls1_handshake_write(SSL *s)
 	{
 	return dtls1_do_write(s, SSL3_RT_HANDSHAKE);
+	}
+
+const struct ssl_ctrl_method_st dtlsv1_ctrl =
+	{
+	ssl3_get_num_renegotiations,
+	dtls1_get_timeout,
+	};
+
+int DTLSv1_get_timeout(SSL *s, struct timeval *tv)
+	{
+	if (s->method->ctrl->dtls_get_timeout)
+		return s->method->ctrl->dtls_get_timeout(s, tv);
+	return 0;
 	}
