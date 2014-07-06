@@ -3371,6 +3371,11 @@ void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
 	s->tlsext_debug_cb = cb;
 	}
 
+void SSL_set_tlsext_debug_arg(SSL *s, void *arg)
+	{
+	s->tlsext_debug_arg = arg;
+	}
+
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
@@ -3534,10 +3539,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 #endif /* !OPENSSL_NO_ECDH */
 #ifndef OPENSSL_NO_TLSEXT
-	case SSL_CTRL_SET_TLSEXT_DEBUG_ARG:
-		s->tlsext_debug_arg=parg;
-		ret = 1;
-		break;
 
 #ifdef TLSEXT_TYPE_opaque_prf_input
 	case SSL_CTRL_SET_TLSEXT_OPAQUE_PRF_INPUT:
