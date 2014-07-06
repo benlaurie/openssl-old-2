@@ -342,10 +342,8 @@ void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
 						      unsigned char *, int,
 						      void *));
 void SSL_set_tlsext_debug_arg(SSL *s, void *arg);
+void SSL_set_tlsext_status_type(SSL *ssl, int type);
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#define SSL_set_tlsext_status_type(ssl, type) \
-SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE,type, NULL)
 
 #define SSL_get_tlsext_status_exts(ssl, arg) \
 SSL_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_EXTS,0, (void *)arg)

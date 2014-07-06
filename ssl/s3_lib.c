@@ -3376,6 +3376,11 @@ void SSL_set_tlsext_debug_arg(SSL *s, void *arg)
 	s->tlsext_debug_arg = arg;
 	}
 
+void SSL_set_tlsext_status_type(SSL *s, int type)
+	{
+	s->tlsext_status_type = type;
+	}
+
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
@@ -3563,11 +3568,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			s->tlsext_opaque_prf_input_len = 0;
 		break;
 #endif
-
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE:
-		s->tlsext_status_type=larg;
-		ret = 1;
-		break;
 
 	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_EXTS:
 		*(STACK_OF(X509_EXTENSION) **)parg = s->tlsext_ocsp_exts;
