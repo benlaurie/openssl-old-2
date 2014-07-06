@@ -3406,7 +3406,7 @@ size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
 	 *resp = s->tlsext_ocsp_resp;
 	 return s->tlsext_ocsp_resplen;
 	 }
-		
+
 void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 				     size_t resplen)
 	 {
