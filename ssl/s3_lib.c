@@ -3466,6 +3466,23 @@ unsigned SSL_heartbeat(SSL *s)
 
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
+unsigned int SSL_num_renegotiations(SSL *s)
+	{
+	if (s->method->ctrl->get_num_renegotiations)
+		return s->method->ctrl->get_num_renegotiations(s);
+	return 0;
+	}
+
+unsigned int ssl3_get_num_renegotiations(SSL *s)
+	{
+	return s->s3->num_renegotiations;
+	}
+
+const struct ssl_ctrl_method_st sslv3_ctrl =
+	{
+	ssl3_get_num_renegotiations,
+	};
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
 	int ret=0;
@@ -3496,9 +3513,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		ret=s->hit;
 		break;
 	case SSL_CTRL_GET_CLIENT_CERT_REQUEST:
-		break;
-	case SSL_CTRL_GET_NUM_RENEGOTIATIONS:
-		ret=s->s3->num_renegotiations;
 		break;
 	case SSL_CTRL_CLEAR_NUM_RENEGOTIATIONS:
 		ret=s->s3->num_renegotiations;

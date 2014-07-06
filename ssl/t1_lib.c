@@ -4712,3 +4712,10 @@ int ssl_security_cert_chain(SSL *s, STACK_OF(X509) *sk, X509 *x, int vfy)
 		}
 	return 1;
 	}
+
+const struct ssl_ctrl_method_st tlsv1_ctrl =
+	{
+	ssl3_get_num_renegotiations,
+	};
+
+

@@ -498,6 +498,7 @@ struct ssl_method_st
 	int (*ssl_version)(void);
 	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
 	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
+	const struct ssl_ctrl_method_st *ctrl;
 	};
 
 /* Lets make this into an ASN.1 type structure as follows
@@ -1752,7 +1753,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_CTRL_GET_SESSION_REUSED		8
 #define SSL_CTRL_GET_CLIENT_CERT_REQUEST	9
-#define SSL_CTRL_GET_NUM_RENEGOTIATIONS		10
 #define SSL_CTRL_CLEAR_NUM_RENEGOTIATIONS	11
 #define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS	12
 #define SSL_CTRL_GET_FLAGS			13
@@ -1872,8 +1872,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_session_reused(ssl) \
 	SSL_ctrl((ssl),SSL_CTRL_GET_SESSION_REUSED,0,NULL)
-#define SSL_num_renegotiations(ssl) \
-	SSL_ctrl((ssl),SSL_CTRL_GET_NUM_RENEGOTIATIONS,0,NULL)
+unsigned int SSL_num_renegotiations(SSL *s);
 #define SSL_clear_num_renegotiations(ssl) \
 	SSL_ctrl((ssl),SSL_CTRL_CLEAR_NUM_RENEGOTIATIONS,0,NULL)
 #define SSL_total_renegotiations(ssl) \

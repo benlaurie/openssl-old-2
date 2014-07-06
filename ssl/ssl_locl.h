@@ -724,6 +724,13 @@ typedef struct ssl3_enc_method
 	int (*do_write)(SSL *s);
 	} SSL3_ENC_METHOD;
 
+struct ssl_ctrl_method_st
+	{
+	unsigned int (*get_num_renegotiations)(SSL *s);
+	};
+unsigned int ssl3_get_num_renegotiations(SSL *s);
+
+
 #define SSL_HM_HEADER_LENGTH(s)	s->method->ssl3_enc->hhlen
 #define ssl_handshake_start(s) \
 	(((unsigned char *)s->init_buf->data) + s->method->ssl3_enc->hhlen)
@@ -784,8 +791,12 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
+extern const struct ssl_ctrl_method_st sslv2_ctrl;
+extern const struct ssl_ctrl_method_st sslv3_ctrl;
+extern const struct ssl_ctrl_method_st tlsv1_ctrl;
+
 #define IMPLEMENT_tls_meth_func(version, func_name, s_accept, s_connect, \
-				s_get_meth, enc_data) \
+				s_get_meth, enc_data)			 \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -818,6 +829,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
+		&tlsv1_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}
@@ -855,6 +867,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
+		&sslv3_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}
@@ -892,6 +905,7 @@ const SSL_METHOD *func_name(void)  \
 	ssl_undefined_void_function, \
 	ssl3_callback_ctrl, \
 	ssl3_ctx_callback_ctrl, \
+	&sslv3_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}
@@ -929,6 +943,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl_undefined_void_function, \
 		ssl2_callback_ctrl,	/* local */ \
 		ssl2_ctx_callback_ctrl,	/* local */ \
+		&sslv2_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}
@@ -967,6 +982,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
+		&sslv3_ctrl, \
 	}; \
 	return &func_name##_data; \
 	}

@@ -360,7 +360,7 @@ void SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len);
 # ifndef OPENSSL_NO_HEARTBEATS
 int SSL_get_tlsext_heartbeat_pending(SSL *s);
 void SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set);
-void SSL_heartbeat(SSL *s);
+unsigned SSL_heartbeat(SSL *s);
 # endif
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 

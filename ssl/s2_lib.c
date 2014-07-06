@@ -382,6 +382,11 @@ void ssl2_clear(SSL *s)
 	s->packet_length=0;
 	}
 
+const struct ssl_ctrl_method_st sslv2_ctrl =
+	{
+	NULL,
+	};
+
 long ssl2_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
 	int ret=0;

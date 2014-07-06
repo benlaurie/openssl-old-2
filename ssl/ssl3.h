@@ -508,7 +508,7 @@ typedef struct ssl3_state_st
 	 * there is no more data in the read or write buffers */
 	int renegotiate;
 	int total_renegotiations;
-	int num_renegotiations;
+	unsigned int num_renegotiations;
 
 	int in_read_app_data;
 
