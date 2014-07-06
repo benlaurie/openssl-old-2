@@ -3416,7 +3416,7 @@ void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 	s->tlsext_ocsp_resplen = resplen;
 	}
 
-#ifdef TLSEXT_TYPE_opaque_prf_input
+# ifdef TLSEXT_TYPE_opaque_prf_input
 int SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len)
 	{
 	if (len > 12288) /* actual internal limit is 2^16 for the
@@ -3440,13 +3440,15 @@ int SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len)
 	s->tlsext_opaque_prf_input_len = 0;
 	return 0;
 	}
+# endif
 
+# ifndef OPENSSL_NO_HEARTBEATS
 int SSL_get_tlsext_heartbeat_pending(SSL *s)
 	{
 	return s->tlsext_hb_pending;
 	}
 
-void SSL_set_tlsext_heartbeat_no_requests(SSL, unsigned set)
+void SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set)
 	{
 	if (set)
 		s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
@@ -3454,7 +3456,13 @@ void SSL_set_tlsext_heartbeat_no_requests(SSL, unsigned set)
 		s->tlsext_heartbeat &= ~SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
 	}
 
-#endif
+unsigned SSL_heartbeat(SSL *s)
+	{
+	if (SSL_IS_DTLS(s))
+		return dtls1_heartbeat(s);
+	return tls1_heartbeat(s);
+	}
+# endif  /* ndef OPENSSL_NO_HEARTBEATS */
 
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
@@ -3618,19 +3626,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		}
 		break;
 #endif /* !OPENSSL_NO_ECDH */
-#ifndef OPENSSL_NO_TLSEXT
-
-#ifndef OPENSSL_NO_HEARTBEATS
-	case SSL_CTRL_TLS_EXT_SEND_HEARTBEAT:
-		if (SSL_IS_DTLS(s))
-			ret = dtls1_heartbeat(s);
-		else
-			ret = tls1_heartbeat(s);
-		break;
-
-#endif
-
-#endif /* !OPENSSL_NO_TLSEXT */
 
 	case SSL_CTRL_CHAIN:
 		if (larg)

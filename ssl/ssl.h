@@ -814,11 +814,6 @@ struct ssl_session_st
 #define SSL_get_secure_renegotiation_support(ssl) \
 	SSL_ctrl((ssl), SSL_CTRL_GET_RI_SUPPORT, 0, NULL)
 
-#ifndef OPENSSL_NO_HEARTBEATS
-#define SSL_heartbeat(ssl) \
-        SSL_ctrl((ssl),SSL_CTRL_TLS_EXT_SEND_HEARTBEAT,0,NULL)
-#endif
-
 #define SSL_CTX_set_cert_flags(ctx,op) \
 	SSL_CTX_ctrl((ctx),SSL_CTRL_CERT_FLAGS,(op),NULL)
 #define SSL_set_cert_flags(s,op) \
