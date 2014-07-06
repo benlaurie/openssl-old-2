@@ -1817,9 +1817,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #endif
 #endif /* OPENSSL_NO_TLSEXT */
 
-#define DTLS_CTRL_HANDLE_TIMEOUT	74
-#define DTLS_CTRL_LISTEN			75
-
 #define SSL_CTRL_GET_RI_SUPPORT			76
 #define SSL_CTRL_CLEAR_OPTIONS			77
 #define SSL_CTRL_CLEAR_MODE			78
@@ -1863,10 +1860,9 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_DH_AUTO			118
 
 int DTLSv1_get_timeout(SSL *s, struct timeval *tv);
-#define DTLSv1_handle_timeout(ssl) \
-	SSL_ctrl(ssl,DTLS_CTRL_HANDLE_TIMEOUT,0, NULL)
-#define DTLSv1_listen(ssl, peer) \
-	SSL_ctrl(ssl,DTLS_CTRL_LISTEN,0, (void *)peer)
+int DTLSv1_handle_timeout(SSL *s);
+struct sockaddr;
+int DTLSv1_listen(SSL *s, struct sockaddr *client);
 
 #define SSL_session_reused(ssl) \
 	SSL_ctrl((ssl),SSL_CTRL_GET_SESSION_REUSED,0,NULL)

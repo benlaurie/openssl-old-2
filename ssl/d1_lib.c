@@ -70,7 +70,6 @@ static void get_current_time(struct timeval *t);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s);
 const char dtls1_version_str[]="DTLSv1" OPENSSL_VERSION_PTEXT;
-int dtls1_listen(SSL *s, struct sockaddr *client);
 
 const SSL3_ENC_METHOD DTLSv1_enc_data={
     	tls1_enc,
@@ -282,13 +281,6 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
 
 	switch (cmd)
 		{
-	case DTLS_CTRL_HANDLE_TIMEOUT:
-		ret = dtls1_handle_timeout(s);
-		break;
-	case DTLS_CTRL_LISTEN:
-		ret = dtls1_listen(s, parg);
-		break;
-
 	default:
 		ret = ssl3_ctrl(s, cmd, larg, parg);
 		break;
@@ -499,7 +491,7 @@ static void get_current_time(struct timeval *t)
 #endif
 }
 
-int dtls1_listen(SSL *s, struct sockaddr *client)
+static int dtls1_listen(SSL *s, struct sockaddr *client)
 	{
 	int ret;
 
@@ -532,11 +524,27 @@ const struct ssl_ctrl_method_st dtlsv1_ctrl =
 	{
 	ssl3_get_num_renegotiations,
 	dtls1_get_timeout,
+	dtls1_handle_timeout,
+	dtls1_listen,
 	};
 
 int DTLSv1_get_timeout(SSL *s, struct timeval *tv)
 	{
 	if (s->method->ctrl->dtls_get_timeout)
 		return s->method->ctrl->dtls_get_timeout(s, tv);
+	return 0;
+	}
+
+int DTLSv1_handle_timeout(SSL *s)
+	{
+	if (s->method->ctrl->dtls_handle_timeout)
+		return s->method->ctrl->dtls_handle_timeout(s);
+	return 0;
+	}
+
+int DTLSv1_listen(SSL *s, struct sockaddr *client)
+	{
+	if (s->method->ctrl->dtls_listen)
+		return s->method->ctrl->dtls_listen(s, client);
 	return 0;
 	}

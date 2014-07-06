@@ -728,6 +728,8 @@ struct ssl_ctrl_method_st
 	{
 	unsigned int (*get_num_renegotiations)(SSL *s);
 	int (*dtls_get_timeout)(SSL *s, struct timeval *tv);
+	int (*dtls_handle_timeout)(SSL *s);
+	int (*dtls_listen)(SSL *s, struct sockaddr *client);
 	};
 
 unsigned int ssl3_get_num_renegotiations(SSL *s);
@@ -1187,6 +1189,7 @@ void dtls1_get_ccs_header(unsigned char *data, struct ccs_header_st *ccs_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
 long dtls1_default_timeout(void);
 int dtls1_check_timeout_num(SSL *s);
+/* FIXME: internal callers should maybe use DTLSv1_handle_timeout instead? */
 int dtls1_handle_timeout(SSL *s);
 const SSL_CIPHER *dtls1_get_cipher(unsigned int u);
 void dtls1_start_timer(SSL *s);
