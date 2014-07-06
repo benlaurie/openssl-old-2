@@ -357,17 +357,11 @@ void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 # ifdef TLSEXT_TYPE_opaque_prf_input
 void SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len);
 # endif
+# ifndef OPENSSL_NO_HEARTBEATS
 int SSL_get_tlsext_heartbeat_pending(SSL *s);
+void SSL_set_tlsext_heartbeat_no_requests(SSL, unsigned set);
+# endif
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#ifndef OPENSSL_NO_HEARTBEATS
-#define SSL_TLSEXT_HB_ENABLED				0x01
-#define SSL_TLSEXT_HB_DONT_SEND_REQUESTS	0x02
-#define SSL_TLSEXT_HB_DONT_RECV_REQUESTS	0x04
-
-#define SSL_set_tlsext_heartbeat_no_requests(ssl, arg) \
-        SSL_ctrl((ssl),SSL_CTRL_SET_TLS_EXT_HEARTBEAT_NO_REQUESTS,arg,NULL)
-#endif
 
 #define SSL_CTX_set_tlsext_servername_callback(ctx, cb) \
 SSL_CTX_callback_ctrl(ctx,SSL_CTRL_SET_TLSEXT_SERVERNAME_CB,(void (*)(void))cb)

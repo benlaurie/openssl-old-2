@@ -1293,6 +1293,9 @@ int ssl_prepare_clienthello_tlsext(SSL *s);
 int ssl_prepare_serverhello_tlsext(SSL *s);
 
 #ifndef OPENSSL_NO_HEARTBEATS
+#define SSL_TLSEXT_HB_ENABLED			0x01
+#define SSL_TLSEXT_HB_DONT_SEND_REQUESTS	0x02
+#define SSL_TLSEXT_HB_DONT_RECV_REQUESTS	0x04
 int tls1_heartbeat(SSL *s);
 int dtls1_heartbeat(SSL *s);
 int tls1_process_heartbeat(SSL *s);

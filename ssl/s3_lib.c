@@ -3446,6 +3446,14 @@ int SSL_get_tlsext_heartbeat_pending(SSL *s)
 	return s->tlsext_hb_pending;
 	}
 
+void SSL_set_tlsext_heartbeat_no_requests(SSL, unsigned set)
+	{
+	if (set)
+		s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
+	else
+		s->tlsext_heartbeat &= ~SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
+	}
+
 #endif
 
 #endif  /* ndef OPENSSL_NO_TLSEXT */
@@ -3620,13 +3628,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			ret = tls1_heartbeat(s);
 		break;
 
-	case SSL_CTRL_SET_TLS_EXT_HEARTBEAT_NO_REQUESTS:
-		if (larg)
-			s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
-		else
-			s->tlsext_heartbeat &= ~SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
-		ret = 1;
-		break;
 #endif
 
 #endif /* !OPENSSL_NO_TLSEXT */
