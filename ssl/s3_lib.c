@@ -3364,41 +3364,55 @@ int SSL_set_tlsext_host_name(SSL *s, const char *name)
 	return 1;
 	}
 
-void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
-						      unsigned char *, int,
-						      void *))
+int SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
+						     unsigned char *, int,
+						     void *))
 	{
 	s->tlsext_debug_cb = cb;
+
+	return 1;
 	}
 
-void SSL_set_tlsext_debug_arg(SSL *s, void *arg)
+int SSL_set_tlsext_debug_arg(SSL *s, void *arg)
 	{
 	s->tlsext_debug_arg = arg;
+
+	return 1;
 	}
 
-void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type)
+int SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type)
 	{
 	s->tlsext_status_type = type;
+
+	return 1;
 	}
 
-void SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts)
+int SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts)
 	{
 	*exts = s->tlsext_ocsp_exts;
+
+	return 1;
 	}
 
-void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts)
+int SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts)
 	{
 	s->tlsext_ocsp_exts = exts;
+
+	return 1;
 	}
 
-void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids)
+int SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids)
 	{
 	*ids = s->tlsext_ocsp_ids;
+
+	return 1;
 	}
 
-void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids)
+int SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids)
 	{
 	s->tlsext_ocsp_ids = ids;
+
+	return 1;
 	}
 
 size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
@@ -3407,13 +3421,15 @@ size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
 	return s->tlsext_ocsp_resplen;
 	}
 
-void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
+int SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 				     size_t resplen)
 	{
 	if (s->tlsext_ocsp_resp)
 		OPENSSL_free(s->tlsext_ocsp_resp);
 	s->tlsext_ocsp_resp = resp;
 	s->tlsext_ocsp_resplen = resplen;
+
+	return 1;
 	}
 
 # ifdef TLSEXT_TYPE_opaque_prf_input
@@ -3448,12 +3464,14 @@ int SSL_get_tlsext_heartbeat_pending(SSL *s)
 	return s->tlsext_hb_pending;
 	}
 
-void SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set)
+int SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set)
 	{
 	if (set)
 		s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
 	else
 		s->tlsext_heartbeat &= ~SSL_TLSEXT_HB_DONT_RECV_REQUESTS;
+
+	return 1;
 	}
 
 unsigned SSL_heartbeat(SSL *s)

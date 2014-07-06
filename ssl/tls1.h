@@ -340,26 +340,26 @@ int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain);
 
 #ifndef OPENSSL_NO_TLSEXT
 int SSL_set_tlsext_host_name(SSL *s, const char *name);
-void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
+int SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
 						      unsigned char *, int,
 						      void *));
-void SSL_set_tlsext_debug_arg(SSL *s, void *arg);
-void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type);
-void SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts);
-void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts);
-void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids);
-void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids);
+int SSL_set_tlsext_debug_arg(SSL *s, void *arg);
+int SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type);
+int SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts);
+int SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts);
+int SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids);
+int SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids);
 size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp);
 /* Note that this does NOT copy its argument, however it DOES OPENSSL_free()
  * any previously set value. FIXME? */
-void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
+int SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 				     size_t resplen);
 # ifdef TLSEXT_TYPE_opaque_prf_input
-void SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len);
+int SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len);
 # endif
 # ifndef OPENSSL_NO_HEARTBEATS
 int SSL_get_tlsext_heartbeat_pending(SSL *s);
-void SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set);
+int SSL_set_tlsext_heartbeat_no_requests(SSL *s, unsigned set);
 unsigned SSL_heartbeat(SSL *s);
 # endif
 #endif  /* ndef OPENSSL_NO_TLSEXT */
