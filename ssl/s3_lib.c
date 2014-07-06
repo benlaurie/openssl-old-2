@@ -3397,49 +3397,55 @@ void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids)
 	}
 
 void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids)
-	 {
-	 s->tlsext_ocsp_ids = ids;
-	 }
+	{
+	s->tlsext_ocsp_ids = ids;
+	}
 
 size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
-	 {
-	 *resp = s->tlsext_ocsp_resp;
-	 return s->tlsext_ocsp_resplen;
-	 }
+	{
+	*resp = s->tlsext_ocsp_resp;
+	return s->tlsext_ocsp_resplen;
+	}
 
 void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 				     size_t resplen)
-	 {
-	 if (s->tlsext_ocsp_resp)
-		 OPENSSL_free(s->tlsext_ocsp_resp);
-	 s->tlsext_ocsp_resp = resp;
-	 s->tlsext_ocsp_resplen = resplen;
-	 }
+	{
+	if (s->tlsext_ocsp_resp)
+		OPENSSL_free(s->tlsext_ocsp_resp);
+	s->tlsext_ocsp_resp = resp;
+	s->tlsext_ocsp_resplen = resplen;
+	}
 
 #ifdef TLSEXT_TYPE_opaque_prf_input
 int SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len)
-	 {
-	 if (len > 12288) /* actual internal limit is 2^16 for the
-		           * complete hello message (including the
-		           * cert chain and everything) */
-		 {
-		 SSLerr(SSL_F_SSL3_CTRL, SSL_R_OPAQUE_PRF_INPUT_TOO_LONG);
-		 break;
-		 }
-	 if (s->tlsext_opaque_prf_input != NULL)
-		 OPENSSL_free(s->tlsext_opaque_prf_input);
-	 if (len == 0)
-		 s->tlsext_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-	 else
-		 s->tlsext_opaque_prf_input = BUF_memdup(parg, len);
-	 if (s->tlsext_opaque_prf_input != NULL)
-		 {
-		 s->tlsext_opaque_prf_input_len = len;
-		 return 1;
-		 }
-	 s->tlsext_opaque_prf_input_len = 0;
-	 return 0;
-	 }
+	{
+	if (len > 12288) /* actual internal limit is 2^16 for the
+			  * complete hello message (including the
+			  * cert chain and everything) */
+		{
+		SSLerr(SSL_F_SSL3_CTRL, SSL_R_OPAQUE_PRF_INPUT_TOO_LONG);
+		break;
+		}
+	if (s->tlsext_opaque_prf_input != NULL)
+		OPENSSL_free(s->tlsext_opaque_prf_input);
+	if (len == 0)
+		s->tlsext_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
+	else
+		s->tlsext_opaque_prf_input = BUF_memdup(parg, len);
+	if (s->tlsext_opaque_prf_input != NULL)
+		{
+		s->tlsext_opaque_prf_input_len = len;
+		return 1;
+		}
+	s->tlsext_opaque_prf_input_len = 0;
+	return 0;
+	}
+
+int SSL_get_tlsext_heartbeat_pending(SSL *s)
+	{
+	return s->tlsext_hb_pending;
+	}
+
 #endif
 
 #endif  /* ndef OPENSSL_NO_TLSEXT */
@@ -3612,10 +3618,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			ret = dtls1_heartbeat(s);
 		else
 			ret = tls1_heartbeat(s);
-		break;
-
-	case SSL_CTRL_GET_TLS_EXT_HEARTBEAT_PENDING:
-		ret = s->tlsext_hb_pending;
 		break;
 
 	case SSL_CTRL_SET_TLS_EXT_HEARTBEAT_NO_REQUESTS:
