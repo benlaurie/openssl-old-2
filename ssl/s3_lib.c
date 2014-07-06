@@ -3376,7 +3376,7 @@ void SSL_set_tlsext_debug_arg(SSL *s, void *arg)
 	s->tlsext_debug_arg = arg;
 	}
 
-void SSL_set_tlsext_status_type(SSL *s, int type)
+void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type)
 	{
 	s->tlsext_status_type = type;
 	}

@@ -270,7 +270,9 @@ enum tlsext_nametype {
   TLSEXT_NAMETYPE_error = 256
 };
 /* status request value from RFC 3546 */
-#define TLSEXT_STATUSTYPE_ocsp 1
+enum tlsext_statustype {
+  TLSEXT_STATUSTYPE_ocsp = 1
+};
 
 /* ECPointFormat values from draft-ietf-tls-ecc-12 */
 #define TLSEXT_ECPOINTFORMAT_first			0
@@ -342,7 +344,7 @@ void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
 						      unsigned char *, int,
 						      void *));
 void SSL_set_tlsext_debug_arg(SSL *s, void *arg);
-void SSL_set_tlsext_status_type(SSL *ssl, int type);
+void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type);
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 #define SSL_get_tlsext_status_exts(ssl, arg) \
