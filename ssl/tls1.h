@@ -349,10 +349,8 @@ void SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts);
 void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts);
 void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids);
 void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids);
+size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp);
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#define SSL_get_tlsext_status_ocsp_resp(ssl, arg) \
-SSL_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_OCSP_RESP,0, (void *)arg)
 
 #define SSL_set_tlsext_status_ocsp_resp(ssl, arg, arglen) \
 SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP,arglen, (void *)arg)

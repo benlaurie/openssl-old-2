@@ -3401,6 +3401,12 @@ void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids)
 	 s->tlsext_ocsp_ids = ids;
 	 }
 
+size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
+	 {
+	 *resp = s->tlsext_ocsp_resp;
+	 return s->tlsext_ocsp_resplen;
+	 }
+		
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
@@ -3589,10 +3595,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 #endif
 
-	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_OCSP_RESP:
-		*(unsigned char **)parg = s->tlsext_ocsp_resp;
-		return s->tlsext_ocsp_resplen;
-		
 	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP:
 		if (s->tlsext_ocsp_resp)
 			OPENSSL_free(s->tlsext_ocsp_resp);
