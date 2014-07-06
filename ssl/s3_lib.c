@@ -3364,7 +3364,7 @@ int SSL_set_tlsext_host_name(SSL *s, const char *name)
 	return 1;
 	}
 
-void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
+void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
 						      unsigned char *, int,
 						      void *))
 	{
@@ -3384,6 +3384,16 @@ void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type)
 void SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts)
 	{
 	*exts = s->tlsext_ocsp_exts;
+	}
+
+void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts)
+	{
+	s->tlsext_ocsp_exts = exts;
+	}
+
+void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids)
+	{
+	*ids = s->tlsext_ocsp_ids;
 	}
 
 #endif  /* ndef OPENSSL_NO_TLSEXT */
@@ -3573,16 +3583,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			s->tlsext_opaque_prf_input_len = 0;
 		break;
 #endif
-
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_EXTS:
-		s->tlsext_ocsp_exts = parg;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_IDS:
-		*(STACK_OF(OCSP_RESPID) **)parg = s->tlsext_ocsp_ids;
-		ret = 1;
-		break;
 
 	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_IDS:
 		s->tlsext_ocsp_ids = parg;

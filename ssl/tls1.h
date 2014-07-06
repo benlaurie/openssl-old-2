@@ -340,19 +340,15 @@ int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain);
 
 #ifndef OPENSSL_NO_TLSEXT
 int SSL_set_tlsext_host_name(SSL *s, const char *name);
-void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
+void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int, int,
 						      unsigned char *, int,
 						      void *));
 void SSL_set_tlsext_debug_arg(SSL *s, void *arg);
 void SSL_set_tlsext_status_type(SSL *s, enum tlsext_statustype type);
 void SSL_get_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) **exts);
+void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts);
+void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids);
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#define SSL_set_tlsext_status_exts(ssl, arg) \
-SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_EXTS,0, (void *)arg)
-
-#define SSL_get_tlsext_status_ids(ssl, arg) \
-SSL_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_IDS,0, (void *)arg)
 
 #define SSL_set_tlsext_status_ids(ssl, arg) \
 SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_IDS,0, (void *)arg)
