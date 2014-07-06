@@ -3407,6 +3407,15 @@ size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp)
 	 return s->tlsext_ocsp_resplen;
 	 }
 		
+void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
+				     size_t resplen)
+	 {
+	 if (s->tlsext_ocsp_resp)
+		 OPENSSL_free(s->tlsext_ocsp_resp);
+	 s->tlsext_ocsp_resp = resp;
+	 s->tlsext_ocsp_resplen = resplen;
+	 }
+
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
@@ -3594,14 +3603,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			s->tlsext_opaque_prf_input_len = 0;
 		break;
 #endif
-
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP:
-		if (s->tlsext_ocsp_resp)
-			OPENSSL_free(s->tlsext_ocsp_resp);
-		s->tlsext_ocsp_resp = parg;
-		s->tlsext_ocsp_resplen = larg;
-		ret = 1;
-		break;
 
 #ifndef OPENSSL_NO_HEARTBEATS
 	case SSL_CTRL_TLS_EXT_SEND_HEARTBEAT:

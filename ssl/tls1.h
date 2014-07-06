@@ -350,10 +350,11 @@ void SSL_set_tlsext_status_exts(SSL *s, STACK_OF(X509_EXTENSION) *exts);
 void SSL_get_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) **ids);
 void SSL_set_tlsext_status_ids(SSL *s, STACK_OF(OCSP_RESPID) *ids);
 size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp);
+/* Note that this does NOT copy its argument, however it DOES OPENSSL_free()
+ * any previously set value. FIXME? */
+void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
+				     size_t resplen);
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#define SSL_set_tlsext_status_ocsp_resp(ssl, arg, arglen) \
-SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP,arglen, (void *)arg)
 
 #define SSL_CTX_set_tlsext_servername_callback(ctx, cb) \
 SSL_CTX_callback_ctrl(ctx,SSL_CTRL_SET_TLSEXT_SERVERNAME_CB,(void (*)(void))cb)
