@@ -3416,6 +3416,32 @@ void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 	 s->tlsext_ocsp_resplen = resplen;
 	 }
 
+#ifdef TLSEXT_TYPE_opaque_prf_input
+int SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len)
+	 {
+	 if (len > 12288) /* actual internal limit is 2^16 for the
+		           * complete hello message (including the
+		           * cert chain and everything) */
+		 {
+		 SSLerr(SSL_F_SSL3_CTRL, SSL_R_OPAQUE_PRF_INPUT_TOO_LONG);
+		 break;
+		 }
+	 if (s->tlsext_opaque_prf_input != NULL)
+		 OPENSSL_free(s->tlsext_opaque_prf_input);
+	 if (len == 0)
+		 s->tlsext_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
+	 else
+		 s->tlsext_opaque_prf_input = BUF_memdup(parg, len);
+	 if (s->tlsext_opaque_prf_input != NULL)
+		 {
+		 s->tlsext_opaque_prf_input_len = len;
+		 return 1;
+		 }
+	 s->tlsext_opaque_prf_input_len = 0;
+	 return 0;
+	 }
+#endif
+
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
@@ -3579,30 +3605,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 #endif /* !OPENSSL_NO_ECDH */
 #ifndef OPENSSL_NO_TLSEXT
-
-#ifdef TLSEXT_TYPE_opaque_prf_input
-	case SSL_CTRL_SET_TLSEXT_OPAQUE_PRF_INPUT:
-		if (larg > 12288) /* actual internal limit is 2^16 for the complete hello message
-		                   * (including the cert chain and everything) */
-			{
-			SSLerr(SSL_F_SSL3_CTRL, SSL_R_OPAQUE_PRF_INPUT_TOO_LONG);
-			break;
-			}
-		if (s->tlsext_opaque_prf_input != NULL)
-			OPENSSL_free(s->tlsext_opaque_prf_input);
-		if ((size_t)larg == 0)
-			s->tlsext_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-		else
-			s->tlsext_opaque_prf_input = BUF_memdup(parg, (size_t)larg);
-		if (s->tlsext_opaque_prf_input != NULL)
-			{
-			s->tlsext_opaque_prf_input_len = (size_t)larg;
-			ret = 1;
-			}
-		else
-			s->tlsext_opaque_prf_input_len = 0;
-		break;
-#endif
 
 #ifndef OPENSSL_NO_HEARTBEATS
 	case SSL_CTRL_TLS_EXT_SEND_HEARTBEAT:

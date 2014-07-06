@@ -354,6 +354,9 @@ size_t SSL_get_tlsext_status_ocsp_resp(SSL *s, const unsigned char **resp);
  * any previously set value. FIXME? */
 void SSL_set_tlsext_status_ocsp_resp(SSL *s, unsigned char *resp,
 				     size_t resplen);
+# ifdef TLSEXT_TYPE_opaque_prf_input
+void SSL_set_tlsext_opaque_prf_input(SSL *s, const void *src, size_t len);
+# endif
 #endif  /* ndef OPENSSL_NO_TLSEXT */
 
 #define SSL_CTX_set_tlsext_servername_callback(ctx, cb) \
@@ -378,8 +381,6 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB,(void (*)(void))cb)
 #define SSL_CTX_set_tlsext_status_arg(ssl, arg) \
 SSL_CTX_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG,0, (void *)arg)
 
-#define SSL_set_tlsext_opaque_prf_input(s, src, len) \
-SSL_ctrl(s,SSL_CTRL_SET_TLSEXT_OPAQUE_PRF_INPUT, len, src)
 #define SSL_CTX_set_tlsext_opaque_prf_input_callback(ctx, cb) \
 SSL_CTX_callback_ctrl(ctx,SSL_CTRL_SET_TLSEXT_OPAQUE_PRF_INPUT_CB, (void (*)(void))cb)
 #define SSL_CTX_set_tlsext_opaque_prf_input_callback_arg(ctx, arg) \
