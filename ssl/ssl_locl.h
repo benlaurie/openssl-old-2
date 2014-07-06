@@ -974,7 +974,7 @@ const SSL_METHOD *func_name(void)  \
 		dtls1_read_bytes, \
 		dtls1_write_app_data_bytes, \
 		dtls1_dispatch_alert, \
-		dtls1_ctrl, \
+		ssl3_ctrl, \
 		ssl3_ctx_ctrl, \
 		ssl3_get_cipher_by_char, \
 		ssl3_put_cipher_by_char, \
@@ -1253,7 +1253,6 @@ int	dtls1_accept(SSL *s);
 int	dtls1_connect(SSL *s);
 void dtls1_free(SSL *s);
 void dtls1_clear(SSL *s);
-long dtls1_ctrl(SSL *s,int cmd, long larg, void *parg);
 int dtls1_shutdown(SSL *s);
 
 long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok);

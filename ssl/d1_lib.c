@@ -275,19 +275,6 @@ void dtls1_clear(SSL *s)
 		s->version=s->method->version;
 	}
 
-long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
-	{
-	int ret=0;
-
-	switch (cmd)
-		{
-	default:
-		ret = ssl3_ctrl(s, cmd, larg, parg);
-		break;
-		}
-	return(ret);
-	}
-
 /*
  * As it's impossible to use stream ciphers in "datagram" mode, this
  * simple filter is designed to disengage them in DTLS. Unfortunately
