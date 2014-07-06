@@ -338,10 +338,10 @@ int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain);
 
 #ifndef OPENSSL_NO_TLSEXT
 int SSL_set_tlsext_host_name(SSL *s, const char *name);
+void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
+						      unsigned char *, int,
+						      void *));
 #endif  /* ndef OPENSSL_NO_TLSEXT */
-
-#define SSL_set_tlsext_debug_callback(ssl, cb) \
-SSL_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_DEBUG_CB,(void (*)(void))cb)
 
 #define SSL_set_tlsext_debug_arg(ssl, arg) \
 SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_DEBUG_ARG,0, (void *)arg)

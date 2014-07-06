@@ -3338,6 +3338,8 @@ static char * MS_CALLBACK srp_password_from_info_cb(SSL *s, void *arg)
 
 static int ssl3_set_req_cert_type(CERT *c, const unsigned char *p, size_t len);
 
+#ifndef OPENSSL_NO_TLSEXT
+
 int SSL_set_tlsext_host_name(SSL *s, const char *name)
 	{
 	if (s->tlsext_hostname != NULL) 
@@ -3361,6 +3363,15 @@ int SSL_set_tlsext_host_name(SSL *s, const char *name)
 
 	return 1;
 	}
+
+void SSL_set_tlsext_debug_callback(SSL *s, void (*cb)(SSL *, int ,int,
+						      unsigned char *, int,
+						      void *))
+	{
+	s->tlsext_debug_cb = cb;
+	}
+
+#endif  /* ndef OPENSSL_NO_TLSEXT */
 
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
@@ -3857,12 +3868,6 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 		{
 		s->cert->ecdh_tmp_cb = (EC_KEY *(*)(SSL *, int, int))fp;
 		}
-		break;
-#endif
-#ifndef OPENSSL_NO_TLSEXT
-	case SSL_CTRL_SET_TLSEXT_DEBUG_CB:
-		s->tlsext_debug_cb=(void (*)(SSL *,int ,int,
-					unsigned char *, int, void *))fp;
 		break;
 #endif
 	case SSL_CTRL_SET_NOT_RESUMABLE_SESS_CB:
