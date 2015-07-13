@@ -152,6 +152,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 #include <openssl/ocsp.h>
+#include <openssl/ct.h>
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>
 #endif
@@ -330,6 +331,12 @@ SSL *SSL_new(SSL_CTX *ctx)
     s->tlsext_ocsp_exts = NULL;
     s->tlsext_ocsp_resp = NULL;
     s->tlsext_ocsp_resplen = -1;
+    s->tlsext_ct_policy = CT_POLICY_NONE;
+    s->tlsext_scts = NULL;
+    s->tlsext_sct_par_pkey = NULL;
+    s->tls_ext_sct_data = NULL;
+    s->tls_ext_sct_data_len = 0;
+    s->tlsext_ct_have_parsed = 0;
     CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
     s->initial_ctx = ctx;
 # ifndef OPENSSL_NO_EC
@@ -385,6 +392,8 @@ SSL *SSL_new(SSL_CTX *ctx)
     s->psk_client_callback = ctx->psk_client_callback;
     s->psk_server_callback = ctx->psk_server_callback;
 #endif
+
+    SSL_apply_certificate_transparency_policy(s, ctx->tlsext_ct_policy);
 
     return (s);
  err:
@@ -567,6 +576,11 @@ void SSL_free(SSL *s)
 #endif                         /* OPENSSL_NO_EC */
     sk_X509_EXTENSION_pop_free(s->tlsext_ocsp_exts, X509_EXTENSION_free);
     sk_OCSP_RESPID_pop_free(s->tlsext_ocsp_ids, OCSP_RESPID_free);
+    sk_CTSCT_pop_free(s->tlsext_scts, CTSCT_free);
+    if (s->tls_ext_sct_data)
+        OPENSSL_free(s->tls_ext_sct_data);
+    if (s->tlsext_sct_par_pkey)
+        EVP_PKEY_free(s->tlsext_sct_par_pkey);
     OPENSSL_free(s->tlsext_ocsp_resp);
     OPENSSL_free(s->alpn_client_proto_list);
 
@@ -1693,6 +1707,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
     ret->method = meth;
 
     ret->cert_store = NULL;
+    ret->ctlog_store = NULL;
     ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
     ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
     ret->session_cache_head = NULL;
@@ -1734,6 +1749,9 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
         goto err;
     ret->cert_store = X509_STORE_new();
     if (ret->cert_store == NULL)
+        goto err;
+    ret->ctlog_store = CTLOG_STORE_new();
+    if (ret->ctlog_store == NULL)
         goto err;
 
     if (!ssl_create_cipher_list(ret->method,
@@ -1863,6 +1881,7 @@ void SSL_CTX_free(SSL_CTX *a)
     CRYPTO_free_ex_data(CRYPTO_EX_INDEX_SSL_CTX, a, &a->ex_data);
     lh_SSL_SESSION_free(a->sessions);
     X509_STORE_free(a->cert_store);
+    CTLOG_STORE_free(a->ctlog_store);
     sk_SSL_CIPHER_free(a->cipher_list);
     sk_SSL_CIPHER_free(a->cipher_list_by_id);
     ssl_cert_free(a->cert);
@@ -2850,7 +2869,15 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx)
 #ifndef OPENSSL_NO_STDIO
 int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx)
 {
-    return (X509_STORE_set_default_paths(ctx->cert_store));
+    int ret = X509_STORE_set_default_paths(ctx->cert_store);
+    if (ret == 1) { /* if that works, let's try logs too */
+        /*
+         * TODO(aeijdenberg): for now deliberately fail silently if unable
+         * to load default log files.
+         */
+        CTLOG_STORE_set_default_paths(ctx);
+    }
+    return ret;
 }
 
 int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,

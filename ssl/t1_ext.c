@@ -55,6 +55,7 @@
 
 /* Custom extension utility functions */
 
+#include <openssl/ct.h>
 #include "ssl_locl.h"
 
 
@@ -212,8 +213,12 @@ static int custom_ext_meth_add(custom_ext_methods *exts,
      */
     if (!add_cb && free_cb)
         return 0;
-    /* Don't add if extension supported internally. */
-    if (SSL_extension_supported(ext_type))
+    /*
+     * Don't add if extension supported internally, but make exception
+     * for extension types that previously were not supported, but now are.
+     */
+    if (SSL_extension_supported(ext_type) &&
+        ext_type != TLSEXT_TYPE_signed_certificate_timestamp)
         return 0;
     /* Extension type must fit in 16 bits */
     if (ext_type > 0xffff)
@@ -242,6 +247,12 @@ static int custom_ext_meth_add(custom_ext_methods *exts,
     return 1;
 }
 
+/* Return true if a client custom extensions exists, false otherwise */
+int SSL_CTX_has_client_custom_ext(SSL_CTX *ctx, unsigned int ext_type)
+{
+    return custom_ext_find(&ctx->cert->cli_ext, ext_type) != NULL;
+}
+
 /* Application level functions to add custom extension callbacks */
 int SSL_CTX_add_client_custom_ext(SSL_CTX *ctx, unsigned int ext_type,
                                   custom_ext_add_cb add_cb,
@@ -250,8 +261,24 @@ int SSL_CTX_add_client_custom_ext(SSL_CTX *ctx, unsigned int ext_type,
                                   custom_ext_parse_cb parse_cb,
                                   void *parse_arg)
 {
-    return custom_ext_meth_add(&ctx->cert->cli_ext, ext_type,
-                               add_cb, free_cb, add_arg, parse_cb, parse_arg);
+    int rv = custom_ext_meth_add(&ctx->cert->cli_ext, ext_type,
+                                 add_cb, free_cb, add_arg, parse_cb, parse_arg);
+    if (rv != 1)
+        goto err;
+    
+    /*
+     * CT was previously unsupported, so we allow the custom extension to be
+     * added in order to not break existing client code.  However if it is, we
+     * need to ensure that we don't process it and thus we return an error if
+     * policy is set to anything but CT_POLICY_NONE.
+     * TODO(aeijdenberg): add test for this
+     */
+    if (ext_type == TLSEXT_TYPE_signed_certificate_timestamp &&
+        SSL_CTX_get_certificate_transparency_policy(ctx) != CT_POLICY_NONE)
+        rv = 0;
+
+err:
+    return rv;
 }
 
 int SSL_CTX_add_server_custom_ext(SSL_CTX *ctx, unsigned int ext_type,
@@ -281,6 +308,7 @@ int SSL_extension_supported(unsigned int ext_type)
     case TLSEXT_TYPE_signature_algorithms:
     case TLSEXT_TYPE_srp:
     case TLSEXT_TYPE_status_request:
+    case TLSEXT_TYPE_signed_certificate_timestamp:
     case TLSEXT_TYPE_use_srtp:
 #ifdef TLSEXT_TYPE_encrypt_then_mac
     case TLSEXT_TYPE_encrypt_then_mac:

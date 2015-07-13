@@ -159,6 +159,7 @@ typedef unsigned int u_int;
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/ocsp.h>
+#include <openssl/ct.h>
 #include <openssl/bn.h>
 #ifndef OPENSSL_NO_SRP
 # include <openssl/srp.h>
@@ -183,6 +184,7 @@ extern int verify_quiet;
 
 static int c_nbio = 0;
 static int c_tlsextdebug = 0;
+static ct_policy c_ct_policy = CT_POLICY_REQUEST;
 static int c_status_req = 0;
 static int c_Pause = 0;
 static int c_debug = 0;
@@ -467,13 +469,14 @@ typedef enum OPTION_choice {
     OPT_TLS1_2, OPT_TLS1_1, OPT_TLS1, OPT_DTLS, OPT_DTLS1,
     OPT_DTLS1_2, OPT_TIMEOUT, OPT_MTU, OPT_KEYFORM, OPT_PASS,
     OPT_CERT_CHAIN, OPT_CAPATH, OPT_CHAINCAPATH, OPT_VERIFYCAPATH,
-    OPT_KEY, OPT_RECONNECT, OPT_BUILD_CHAIN, OPT_CAFILE,
+    OPT_KEY, OPT_RECONNECT, OPT_BUILD_CHAIN, OPT_CAFILE, OPT_CTFILE,
     OPT_CHAINCAFILE, OPT_VERIFYCAFILE, OPT_NEXTPROTONEG, OPT_ALPN,
     OPT_SERVERINFO, OPT_STARTTLS, OPT_SERVERNAME, OPT_JPAKE,
     OPT_USE_SRTP, OPT_KEYMATEXPORT, OPT_KEYMATEXPORTLEN, OPT_SMTPHOST,
     OPT_V_ENUM,
     OPT_X_ENUM,
     OPT_S_ENUM,
+    OPT_REQUIRECT, OPT_REQUESTCT, OPT_NOCT,
     OPT_FALLBACKSCSV, OPT_NOCMDS, OPT_PROXY
 } OPTION_CHOICE;
 
@@ -495,6 +498,7 @@ OPTIONS s_client_options[] = {
     {"pass", OPT_PASS, 's', "Private key file pass phrase source"},
     {"CApath", OPT_CAPATH, '/', "PEM format directory of CA's"},
     {"CAfile", OPT_CAFILE, '<', "PEM format file of CA's"},
+    {"CTfile", OPT_CTFILE, '<', "JSON format file of CT logs"},
     {"reconnect", OPT_RECONNECT, '-',
      "Drop and re-make the connection with the same Session-ID"},
     {"pause", OPT_PAUSE, '-', "Sleep  after each read and write system call"},
@@ -548,6 +552,9 @@ OPTIONS s_client_options[] = {
     {"tlsextdebug", OPT_TLSEXTDEBUG, '-',
      "Hex dump of all TLS extensions received"},
     {"status", OPT_STATUS, '-', "Request certificate status from server"},
+    {"noct", OPT_NOCT, '-', "Do not request SCTs from server or attempt to parse"},
+    {"requestct", OPT_REQUESTCT, '-', "(Default) Request SCTs (enables OCSP)"},
+    {"requirect", OPT_REQUIRECT, '-', "Require at least 1 SCT (enables OCSP)"},
     {"serverinfo", OPT_SERVERINFO, 's',
      "types  Send empty ClientHello extensions (comma-separated numbers)"},
     {"alpn", OPT_ALPN, 's',
@@ -639,7 +646,7 @@ int s_client_main(int argc, char **argv)
     STACK_OF(X509_CRL) *crls = NULL;
     const SSL_METHOD *meth = TLS_client_method();
     char *CApath = NULL, *CAfile = NULL, *cbuf = NULL, *sbuf = NULL;
-    char *mbuf = NULL, *proxystr = NULL, *connectstr = NULL;
+    char *mbuf = NULL, *proxystr = NULL, *connectstr = NULL, *CTfile = NULL;
     char *cert_file = NULL, *key_file = NULL, *chain_file = NULL, *prog;
     char *chCApath = NULL, *chCAfile = NULL, *host = SSL_HOST_NAME;
     char *inrand = NULL;
@@ -849,6 +856,15 @@ int s_client_main(int argc, char **argv)
         case OPT_STATUS:
             c_status_req = 1;
             break;
+        case OPT_NOCT:
+            c_ct_policy = CT_POLICY_NONE;
+            break;
+        case OPT_REQUESTCT:
+            c_ct_policy = CT_POLICY_REQUEST;
+            break;
+        case OPT_REQUIRECT:
+            c_ct_policy = CT_POLICY_REQUIRE_ONE;
+            break;
         case OPT_WDEBUG:
 #ifdef WATT32
             dbug_init();
@@ -1002,6 +1018,9 @@ int s_client_main(int argc, char **argv)
             break;
         case OPT_CAFILE:
             CAfile = opt_arg();
+            break;
+        case OPT_CTFILE:
+            CTfile = opt_arg();
             break;
         case OPT_CHAINCAFILE:
             chCAfile = opt_arg();
@@ -1265,7 +1284,16 @@ int s_client_main(int argc, char **argv)
     if (state)
         SSL_CTX_set_info_callback(ctx, apps_ssl_info_callback);
 
+    SSL_CTX_apply_certificate_transparency_policy(ctx, c_ct_policy);
+
     SSL_CTX_set_verify(ctx, verify, verify_callback);
+
+    if (CTfile) {
+        if (CTLOG_STORE_load_file(ctx, CTfile) != 1) {
+            ERR_print_errors(bio_err);
+            goto end;
+        }
+    }
 
     if (!ctx_set_verify_locations(ctx, CAfile, CApath)) {
         ERR_print_errors(bio_err);
@@ -2030,6 +2058,7 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 {
     X509 *peer = NULL;
     char buf[BUFSIZ];
+    STACK_OF(CTSCT) *scts;
     STACK_OF(X509) *sk;
     STACK_OF(X509_NAME) *sk2;
     const SSL_CIPHER *c;
@@ -2042,6 +2071,7 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 
     if (full) {
         int got_a_chain = 0;
+        int count_scts;
 
         sk = SSL_get_peer_cert_chain(s);
         if (sk != NULL) {
@@ -2091,8 +2121,19 @@ static void print_stuff(BIO *bio, SSL *s, int full)
         ssl_print_sigalgs(bio, s);
         ssl_print_tmp_key(bio, s);
 
+        scts = SSL_get_peer_scts(s);
+        count_scts = scts ? sk_CTSCT_num(scts) : 0;
+        BIO_printf(bio, "---\nSigned Certificate Timestamps (%i):\n", count_scts);
+        for (i = 0; i < count_scts; i++) {
+            BIO_printf(bio, "---\n");
+            CT_print_sct(bio, sk_CTSCT_value(scts, i));
+        }
+        if (c_ct_policy == CT_POLICY_NONE) {
+          BIO_printf(bio, "---\nWarning: CT Policy is set to CT_POLICY_NONE, so not all SCTs may be displayed.  Re-run with \"-requestct\".\n");
+        }
+
         BIO_printf(bio,
-                   "---\nSSL handshake has read %ld bytes and written %ld bytes\n",
+                   "---\nSSL handshake has read %"PRIu64" bytes and written %"PRIu64" bytes\n",
                    BIO_number_read(SSL_get_rbio(s)),
                    BIO_number_written(SSL_get_wbio(s)));
     }

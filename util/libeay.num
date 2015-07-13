@@ -4588,3 +4588,4 @@ BIO_s_secmem                            4946	EXIST::FUNCTION:
 CRYPTO_get_secure_mem_ex_functions      4947	EXIST::FUNCTION:
 CRYPTO_set_secure_mem_functions         4948	EXIST::FUNCTION:
 X509_STORE_CTX_get_num_untrusted        4949	EXIST::FUNCTION:
+i2d_re_X509_tbs_bio                     4950	EXIST::FUNCTION:

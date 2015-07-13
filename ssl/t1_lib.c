@@ -114,6 +114,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/ocsp.h>
+#include <openssl/ct.h>
 #include <openssl/rand.h>
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>
@@ -1485,6 +1486,10 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf,
     s2n(TLSEXT_TYPE_encrypt_then_mac, ret);
     s2n(0, ret);
 #endif
+    if (s->tlsext_ct_policy != CT_POLICY_NONE) {
+        s2n(TLSEXT_TYPE_signed_certificate_timestamp, ret);
+        s2n(0, ret);
+    }
     s2n(TLSEXT_TYPE_extended_master_secret, ret);
     s2n(0, ret);
 
@@ -2469,6 +2474,30 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p,
             /* Set flag to expect CertificateStatus message */
             s->tlsext_status_expected = 1;
         }
+        /*
+         * Only take it if we asked for it - i.e if the policy is CT_POLICY_NONE
+         * then a custom extension MAY be processing it, so we need to let
+         * control continue to flow to that.
+         */
+        else if (type == TLSEXT_TYPE_signed_certificate_timestamp &&
+            s->tlsext_ct_policy != CT_POLICY_NONE) {
+            /* Simply copy it off for later processing */
+            if (s->tls_ext_sct_data) {
+                OPENSSL_free(s->tls_ext_sct_data);
+                s->tls_ext_sct_data = NULL;
+            }
+            s->tls_ext_sct_data_len = size;
+            if (size > 0) {
+                s->tls_ext_sct_data = OPENSSL_malloc(size);
+                if (s->tls_ext_sct_data) {
+                    memcpy(s->tls_ext_sct_data, data, size);
+                } else {
+                    *al = TLS1_AD_INTERNAL_ERROR;
+                    return 0;
+                }
+            }
+        }
+
 #ifndef OPENSSL_NO_NEXTPROTONEG
         else if (type == TLSEXT_TYPE_next_proto_neg &&
                  s->s3->tmp.finish_md_len == 0) {

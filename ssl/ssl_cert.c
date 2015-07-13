@@ -570,6 +570,8 @@ int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk)
 # endif
         if (i > 0)
             i = ssl_security_cert_chain(s, ctx.chain, NULL, 1);
+        if (i > 0)
+            s->tlsext_sct_par_pkey = CT_get_public_key_that_signed(&ctx);
     }
 
     s->verify_result = ctx.error;

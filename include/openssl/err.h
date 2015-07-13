@@ -193,6 +193,7 @@ typedef struct err_state_st {
 # define ERR_LIB_TS              47
 # define ERR_LIB_HMAC            48
 # define ERR_LIB_JPAKE           49
+# define ERR_LIB_CT              50
 
 # define ERR_LIB_USER            128
 
@@ -219,6 +220,7 @@ typedef struct err_state_st {
 # define DSOerr(f,r) ERR_PUT_error(ERR_LIB_DSO,(f),(r),__FILE__,__LINE__)
 # define ENGINEerr(f,r) ERR_PUT_error(ERR_LIB_ENGINE,(f),(r),__FILE__,__LINE__)
 # define OCSPerr(f,r) ERR_PUT_error(ERR_LIB_OCSP,(f),(r),__FILE__,__LINE__)
+# define CTerr(f,r) ERR_PUT_error(ERR_LIB_CT,(f),(r),__FILE__,__LINE__)
 # define UIerr(f,r) ERR_PUT_error(ERR_LIB_UI,(f),(r),__FILE__,__LINE__)
 # define COMPerr(f,r) ERR_PUT_error(ERR_LIB_COMP,(f),(r),__FILE__,__LINE__)
 # define ECDSAerr(f,r)  ERR_PUT_error(ERR_LIB_ECDSA,(f),(r),__FILE__,__LINE__)

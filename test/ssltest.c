@@ -164,6 +164,7 @@
 #include <ctype.h>
 
 #include <openssl/bio.h>
+#include <openssl/ct.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -830,6 +831,9 @@ static void sv_usage(void)
     fprintf(stderr, " -alpn_server <string> - have server side offer ALPN\n");
     fprintf(stderr,
             " -alpn_expected <string> - the ALPN protocol that should be negotiated\n");
+    fprintf(stderr, " -noct         - no cert transparency\n");
+    fprintf(stderr, " -requestct    - reuqest cert transparency\n");
+    fprintf(stderr, " -requirect    - require cert transparency\n");
 }
 
 static void print_key_details(BIO *out, EVP_PKEY *key)
@@ -1006,6 +1010,11 @@ int main(int argc, char *argv[])
     int fips_mode = 0;
 #endif
     int no_protocol = 0;
+    /*
+     * Deliberately set default policy to NONE as anything other will break
+     * code that is using the custom ext mechanism.
+     */
+    ct_policy c_ct_policy = CT_POLICY_NONE;
 
     SSL_CONF_CTX *s_cctx = NULL, *c_cctx = NULL;
     STACK_OF(OPENSSL_STRING) *conf_args = NULL;
@@ -1207,6 +1216,15 @@ int main(int argc, char *argv[])
             force = 1;
         } else if (strcmp(*argv, "-time") == 0) {
             print_time = 1;
+        }
+        else if (strcmp(*argv, "-noct") == 0) {
+            c_ct_policy = CT_POLICY_NONE;
+        }
+        else if (strcmp(*argv, "-requestct") == 0) {
+            c_ct_policy = CT_POLICY_REQUEST;
+        }
+        else if (strcmp(*argv, "-requirect") == 0) {
+            c_ct_policy = CT_POLICY_REQUIRE_ONE;
         }
 #ifndef OPENSSL_NO_COMP
         else if (strcmp(*argv, "-zlib") == 0) {
@@ -1442,6 +1460,8 @@ int main(int argc, char *argv[])
             goto end;
         }
     }
+
+    SSL_CTX_apply_certificate_transparency_policy(c_ctx, c_ct_policy);
 
     /* Process SSL_CONF arguments */
     SSL_CONF_CTX_set_ssl_ctx(c_cctx, c_ctx);

@@ -94,6 +94,7 @@
 #endif
 #include <openssl/ui.h>
 #include <openssl/ocsp.h>
+#include <openssl/ct.h>
 #include <openssl/err.h>
 #ifdef OPENSSL_FIPS
 # include <openssl/fips.h>
@@ -161,5 +162,6 @@ void ERR_load_crypto_strings(void)
 # ifndef OPENSSL_NO_JPAKE
     ERR_load_JPAKE_strings();
 # endif
+    ERR_load_CT_strings();
 #endif
 }

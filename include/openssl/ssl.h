@@ -864,7 +864,7 @@ const char *SSL_get_psk_identity(const SSL *s);
 # endif
 
 /* Register callbacks to handle custom TLS Extensions for client or server. */
-
+__owur int SSL_CTX_has_client_custom_ext(SSL_CTX *ctx, unsigned int ext_type);
 __owur int SSL_CTX_add_client_custom_ext(SSL_CTX *ctx, unsigned int ext_type,
                                   custom_ext_add_cb add_cb,
                                   custom_ext_free_cb free_cb,
@@ -2016,7 +2016,6 @@ void ERR_load_SSL_strings(void);
 # define SSL_F_SSL_CTX_SET_TRUST                          229
 # define SSL_F_SSL_CTX_USE_CERTIFICATE                    171
 # define SSL_F_SSL_CTX_USE_CERTIFICATE_ASN1               172
-# define SSL_F_USE_CERTIFICATE_CHAIN_FILE                 220
 # define SSL_F_SSL_CTX_USE_CERTIFICATE_FILE               173
 # define SSL_F_SSL_CTX_USE_PRIVATEKEY                     174
 # define SSL_F_SSL_CTX_USE_PRIVATEKEY_ASN1                175
@@ -2097,6 +2096,7 @@ void ERR_load_SSL_strings(void);
 # define SSL_F_TLS1_PROCESS_HEARTBEAT                     341
 # define SSL_F_TLS1_SETUP_KEY_BLOCK                       211
 # define SSL_F_TLS1_SET_SERVER_SIGALGS                    335
+# define SSL_F_USE_CERTIFICATE_CHAIN_FILE                 220
 
 /* Reason codes. */
 # define SSL_R_APP_DATA_IN_HANDSHAKE                      100
@@ -2160,6 +2160,7 @@ void ERR_load_SSL_strings(void);
 # define SSL_R_COMPRESSION_LIBRARY_ERROR                  142
 # define SSL_R_CONNECTION_TYPE_NOT_SET                    144
 # define SSL_R_COOKIE_MISMATCH                            308
+# define SSL_R_CT_FAILURE                                 102
 # define SSL_R_DATA_BETWEEN_CCS_AND_FINISHED              145
 # define SSL_R_DATA_LENGTH_TOO_LONG                       146
 # define SSL_R_DECRYPTION_FAILED                          147

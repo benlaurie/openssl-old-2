@@ -175,6 +175,12 @@ int i2d_X509_bio(BIO *bp, X509 *x509)
     return ASN1_item_i2d_bio(ASN1_ITEM_rptr(X509), bp, x509);
 }
 
+int i2d_re_X509_tbs_bio(BIO *bp, X509 *x509)
+{
+    x509->cert_info->enc.modified = 1;
+    return ASN1_item_i2d_bio(ASN1_ITEM_rptr(X509_CINF), bp, x509->cert_info);
+}
+
 #ifndef OPENSSL_NO_STDIO
 X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl)
 {

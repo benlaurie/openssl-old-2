@@ -1,0 +1,456 @@
+#!/bin/sh
+
+openssl="../util/shlib_wrap.sh ../apps/openssl"
+tmp="./cttest" # be careful, we delete contents in this dir
+ocsp_port="4455"
+server_port="4433"
+sleeptime=0.1 # appears needed after starting / stopping server
+
+
+#############################################################################
+# Certificate Transparency
+
+server_pid=""
+ocsp_pid=""
+
+die()
+{
+    # Cleanup
+    kill -kill $server_pid
+    kill -kill $ocsp_pid
+    exit $1
+}
+
+check()
+{
+    count=$(grep "$2" "$1" | wc -l)
+    echo "Expecting $3 instance of $2, found $count"
+    if [ "$3" -eq "$count" ]
+    then
+        echo "PASS"
+    else
+        echo "FAIL"
+        die 1
+    fi
+}
+
+echo "Starting CT tests..."
+
+if [ -d "$tmp" ]; then
+    rm -f $tmp/* || die 1
+else
+    mkdir -p "$tmp" || die 1
+fi
+
+echo """[ req ]
+default_bits            = 2048
+default_keyfile         = $tmp/ca.key.pem
+default_md              = sha256
+prompt                  = no
+distinguished_name      = root_ca_distinguished_name
+x509_extensions = v3_ca
+
+[ root_ca_distinguished_name ]
+countryName             = US
+stateOrProvinceName     = California
+localityName            = Mountain View
+0.organizationName      = CT Team
+commonName              = CT Test
+emailAddress            = foo@bar.com
+
+[ v3_ca ]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer:always
+basicConstraints = CA:true
+
+[ ca ]
+default_ca              = CA_default
+
+[ CA_default ]
+dir                     = $tmp
+certificate             = $tmp/ca.cert.pem
+private_key             = $tmp/ca.key.pem
+x509_extensions         = usr_cert
+name_opt                = ca_default
+cert_opt                = ca_default
+default_days            = 365
+default_md              = sha256
+preserve                = no
+policy                  = policy_match
+database                = $tmp/index
+serial                  = $tmp/serial
+new_certs_dir           = $tmp
+
+[ policy_match ]
+countryName             = optional
+stateOrProvinceName     = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[ usr_cert ]
+basicConstraints=CA:FALSE
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer:always
+authorityInfoAccess = OCSP;URI:http://localhost:$ocsp_port
+""" > $tmp/ct.cnf || die 1
+
+touch $tmp/index || die 1
+echo 01 > $tmp/serial || die 1
+
+echo "Make CA key and cert"
+$openssl req -nodes -config $tmp/ct.cnf -x509 -newkey rsa \
+             -out $tmp/ca.cert.pem || die 1
+
+echo "Generate CT log signing key for logs Foo Log (RSA) and Bar Log (EC)"
+$openssl genrsa -out $tmp/ct-foo.key.pem 2048 -noout -nodes || die 1
+$openssl ecparam -genkey -name prime256v1 -out $tmp/ct-bar.key.pem || die 1
+
+echo "Make CT log metadata"
+$openssl ct -createlogmetadata -key $tmp/ct-foo.key.pem -name "Foo Log" \
+            -out $tmp/ct-foo.metadata.pem || die 1
+$openssl ct -createlogmetadata -key $tmp/ct-bar.key.pem -name "Bar Log" \
+            -out $tmp/ct-bar.metadata.pem || die 1
+cat $tmp/ct-foo.metadata.pem $tmp/ct-bar.metadata.pem \
+    > $tmp/ct-all.metadata.pem || die 1
+
+echo "Convert PEM metadata to standard JSON log list"
+$openssl ct -createloglist -in $tmp/ct-all.metadata.pem \
+            -out $tmp/log_list.json || die 1
+
+echo "Create CSR for localhost"
+$openssl req -config $tmp/ct.cnf -out $tmp/site.csr.pem -new -newkey rsa \
+             -nodes -keyout $tmp/site.key.pem -subj "/CN=localhost" || die 1
+
+echo "Create CSR for localhost2"
+$openssl req -config $tmp/ct.cnf -out $tmp/site2.csr.pem -new -newkey rsa \
+             -nodes -keyout $tmp/site2.key.pem -subj "/CN=localhost2" || die 1
+
+echo "Make a precert for localhost"
+$openssl ca -batch -config $tmp/ct.cnf -in $tmp/site.csr.pem \
+            -out $tmp/site.precert.pem -precert || die 1
+
+echo "Make precert SCTs"
+$openssl ct -createsct -in $tmp/site.precert.pem -key $tmp/ct-foo.key.pem \
+            -out $tmp/site-foo.sct.pem -cacert $tmp/ca.cert.pem \
+            -bogusextensions || die 1
+$openssl ct -createsct -in $tmp/site.precert.pem -key $tmp/ct-bar.key.pem \
+            -out $tmp/site-bar.sct.pem -cacert $tmp/ca.cert.pem || die 1
+cat $tmp/site-foo.sct.pem $tmp/site-bar.sct.pem \
+    > $tmp/site-all.sct.pem || die 1
+
+echo "Make a real cert now from the precert and embed the precert SCTs"
+$openssl ca -batch -config $tmp/ct.cnf -in $tmp/site.precert.pem \
+            -out $tmp/site.cert.pem -scts $tmp/site-all.sct.pem
+
+echo "Make a real cert now for localhost2"
+$openssl ca -batch -config $tmp/ct.cnf -in $tmp/site2.csr.pem \
+            -out $tmp/site2.cert.pem || die 1
+
+echo "Make real SCTs for the final cert"
+$openssl ct -createsct -in $tmp/site.cert.pem -key $tmp/ct-foo.key.pem \
+            -out $tmp/site-foo2.sct.pem || die 1
+$openssl ct -createsct -in $tmp/site.cert.pem -key $tmp/ct-bar.key.pem \
+            -out $tmp/site-bar2.sct.pem -bogusextensions || die 1
+cat $tmp/site-foo2.sct.pem $tmp/site-bar2.sct.pem > $tmp/site-tls-all.sct.pem
+
+echo "Make serverinfo file"
+$openssl ct -createserverinfo -in $tmp/site-tls-all.sct.pem \
+            -out $tmp/site.serverinfo.pem || die 1
+
+echo "Make useless SCTs for site2"
+$openssl ct -createsct -in $tmp/site2.cert.pem -key $tmp/ct-foo.key.pem \
+            -out $tmp/site2-foo2-1.sct.pem -bogusentrytype || die 1
+$openssl ct -createsct -in $tmp/site2.cert.pem -key $tmp/ct-bar.key.pem \
+            -out $tmp/site2-bar2-1.sct.pem -bogusversion || die 1
+cat $tmp/site2-foo2-1.sct.pem $tmp/site2-bar2-1.sct.pem > $tmp/site2-useless.sct.pem
+
+echo "Make useless serverinfo file for site2"
+$openssl ct -createserverinfo -in $tmp/site2-useless.sct.pem \
+            -out $tmp/site2-useless.serverinfo.pem || die 1
+
+
+echo "Make real SCTs for site2"
+$openssl ct -createsct -in $tmp/site2.cert.pem -key $tmp/ct-foo.key.pem \
+            -out $tmp/site2-foo2.sct.pem || die 1
+$openssl ct -createsct -in $tmp/site2.cert.pem -key $tmp/ct-bar.key.pem \
+            -out $tmp/site2-bar2.sct.pem -bogusextensions || die 1
+cat $tmp/site2-foo2.sct.pem $tmp/site2-bar2.sct.pem \
+    > $tmp/site2-tls-all.sct.pem
+
+echo "Make serverinfo file for site2"
+$openssl ct -createserverinfo -in $tmp/site2-tls-all.sct.pem \
+            -out $tmp/site2.serverinfo.pem || die 1
+
+echo "Make bogus serverinfo file (using precert scts)"
+$openssl ct -createserverinfo -in $tmp/site-all.sct.pem \
+            -out $tmp/site.bogusserverinfo.pem || die 1
+
+echo "Start OCSP server"
+$openssl ocsp -port $ocsp_port -sha256 -index $tmp/index -CA $tmp/ca.cert.pem \
+              -rkey $tmp/ca.key.pem -rsigner $tmp/ca.cert.pem \
+              -scts $tmp/site-tls-all.sct.pem > $tmp/ocspserverout 2>&1 &
+ocsp_pid="$!"
+
+echo "Start SSL server"
+$openssl s_server -cert $tmp/site.cert.pem -accept $server_port \
+                  -key $tmp/site.key.pem -status -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site.serverinfo.pem -rev \
+                   > $tmp/serverout 2>&1 &
+server_pid="$!"
+
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 || die 1
+check $tmp/out "Verify return code: 0 (ok)" 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 6
+check $tmp/out "Signature : ecdsa-with-SHA256" 3
+check $tmp/out "Signature : sha256WithRSAEncryption" 3
+
+echo "Test no errors when not verifying"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 || die 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 4
+check $tmp/out "Status    : Cert chain not verified - unable to validate" 2
+
+echo "Test noct is as expected"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -CTfile $tmp/log_list.json -noct > $tmp/out 2>&1 || die 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 0
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Valid - success!" 0
+check $tmp/out "Log       : Unknown" 2
+check $tmp/out "Status    : Unattempted" 2
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Start server with precert"
+$openssl s_server -cert $tmp/site.precert.pem -accept $server_port \
+                  -key $tmp/site.key.pem -status -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site.serverinfo.pem -rev \
+                   > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together - should fail based on poison"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error  -CAfile $tmp/ca.cert.pem \
+                  > $tmp/out 2>&1 && die 1
+check $tmp/out "verify error:num=34:unhandled critical extension" 1
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Start server with precert SCTs instead of TLS ones"
+$openssl s_server -cert $tmp/site.cert.pem -accept $server_port \
+                  -key $tmp/site.key.pem -status -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site.bogusserverinfo.pem -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "No CT should pass"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -noct > $tmp/out 2>&1 || die 1
+check $tmp/out "Verify return code: 0 (ok)" 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 0
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Valid - success!" 0
+check $tmp/out "Status    : Unattempted" 2
+
+echo "Request CT should fail since the data is bogus"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requestct > $tmp/out 2>&1 && die 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 4
+check $tmp/out "Status    : Invalid - failure!" 2
+
+echo "Require CT should fail since the data is bogus"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 && die 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 4
+check $tmp/out "Status    : Invalid - failure!" 2
+
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Test only X509v3 ext"
+$openssl s_server -cert $tmp/site.cert.pem -accept $server_port \
+                  -key $tmp/site.key.pem -CAfile $tmp/ca.cert.pem \
+                  -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 || die 1
+check $tmp/out "Verify return code: 0 (ok)" 1
+check $tmp/out "Source    : X509v3 Extension" 2
+check $tmp/out "Source    : TLS Extension" 0
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Valid - success!" 2
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Test only TLS ext (with wrong TLS ext data!)"
+$openssl s_server -cert $tmp/site2.cert.pem -accept $server_port \
+                  -key $tmp/site2.key.pem -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site.serverinfo.pem -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 && die 1
+check $tmp/out "Source    : X509v3 Extension" 0
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Valid - success!" 0
+check $tmp/out "Status    : Invalid - failure!" 2
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Test only TLS ext (with right TLS ext data!)"
+$openssl s_server -cert $tmp/site2.cert.pem -accept $server_port \
+                  -key $tmp/site2.key.pem -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site2.serverinfo.pem -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 || die 1
+check $tmp/out "Source    : X509v3 Extension" 0
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Valid - success!" 2
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Test only OCSP (with wrong OCSP ext data!)"
+$openssl s_server -cert $tmp/site2.cert.pem -accept $server_port \
+                  -key $tmp/site2.key.pem -CAfile $tmp/ca.cert.pem \
+                  -status -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 && die 1
+check $tmp/out "Source    : X509v3 Extension" 0
+check $tmp/out "Source    : TLS Extension" 0
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 0
+check $tmp/out "Status    : Invalid - failure!" 2
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+
+echo "Start OCSP with site2 data"
+kill $ocsp_pid || die 1
+sleep $sleeptime
+$openssl ocsp -port $ocsp_port -sha256 -index $tmp/index -CA $tmp/ca.cert.pem \
+              -rkey $tmp/ca.key.pem -rsigner $tmp/ca.cert.pem \
+              -scts $tmp/site2-tls-all.sct.pem > $tmp/ocspserverout 2>&1 &
+ocsp_pid="$!"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 || die 1
+check $tmp/out "Source    : X509v3 Extension" 0
+check $tmp/out "Source    : TLS Extension" 0
+check $tmp/out "Source    : OCSP Stapled Response" 2
+check $tmp/out "Status    : Valid - success!" 2
+check $tmp/out "Status    : Invalid - failure!" 0
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+kill $server_pid || die 1
+sleep $sleeptime
+echo "Start SSL server with useless SCTs"
+$openssl s_server -cert $tmp/site2.cert.pem -accept $server_port \
+                  -key $tmp/site2.key.pem -CAfile $tmp/ca.cert.pem \
+                  -serverinfo $tmp/site2-useless.serverinfo.pem -rev \
+                  > $tmp/serverout 2>&1 &
+server_pid="$!"
+
+echo "Short sleep to make sure openssl server is started"
+sleep $sleeptime
+
+echo "Test all 3 methods together"
+echo "x" | $openssl s_client -connect localhost:$server_port \
+                  -verify 10 -verify_return_error -CAfile $tmp/ca.cert.pem \
+                  -CTfile $tmp/log_list.json -requirect > $tmp/out 2>&1 && die 1
+check $tmp/out "Verify return code: 0 (ok)" 1
+check $tmp/out "Source    : X509v3 Extension" 0
+check $tmp/out "Source    : TLS Extension" 2
+check $tmp/out "Source    : OCSP Stapled Response" 0
+check $tmp/out "Status    : Invalid - failure!" 1
+check $tmp/out "Status    : Unrecognized SCT version - unable to validate" 1
+check $tmp/out "Status    : Valid - success!" 0
+check $tmp/out "Signature : ecdsa-with-SHA256" 1
+check $tmp/out "Signature : sha256WithRSAEncryption" 1
+
+
+#############################################################################
+# Success!
+die 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

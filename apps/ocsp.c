@@ -111,7 +111,8 @@ static void make_ocsp_response(OCSP_RESPONSE **resp, OCSP_REQUEST *req,
                               CA_DB *db, X509 *ca, X509 *rcert,
                               EVP_PKEY *rkey, const EVP_MD *md,
                               STACK_OF(X509) *rother, unsigned long flags,
-                              int nmin, int ndays, int badsig);
+                              int nmin, int ndays, int badsig,
+                              STACK_OF(CTSCT) *scts);
 
 static char **lookup_serial(CA_DB *db, ASN1_INTEGER *ser);
 static BIO *init_responder(const char *port);
@@ -121,6 +122,7 @@ static int send_ocsp_response(BIO *cbio, OCSP_RESPONSE *resp);
 static OCSP_RESPONSE *query_responder(BIO *cbio, const char *path,
                                       const STACK_OF(CONF_VALUE) *headers,
                                       OCSP_REQUEST *req, int req_timeout);
+int add_scts_to_ocsp_response(OCSP_SINGLERESP *single, STACK_OF(CTSCT) *scts);
 
 typedef enum OPTION_choice {
     OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
@@ -136,7 +138,7 @@ typedef enum OPTION_choice {
     OPT_RESPOUT, OPT_PATH, OPT_ISSUER, OPT_CERT, OPT_SERIAL,
     OPT_INDEX, OPT_CA, OPT_NMIN, OPT_REQUEST, OPT_NDAYS, OPT_RSIGNER,
     OPT_RKEY, OPT_ROTHER, OPT_RMD, OPT_HEADER,
-    OPT_V_ENUM,
+    OPT_V_ENUM, OPT_SCTS,
     OPT_MD
 } OPTION_CHOICE;
 
@@ -203,6 +205,8 @@ OPTIONS ocsp_options[] = {
      "Sesponder certificate to sign responses with"},
     {"rkey", OPT_RKEY, '<', "Responder key to sign responses with"},
     {"rother", OPT_ROTHER, '<', "Other certificates to include in response"},
+    {"scts", OPT_SCTS, '<', "SCTs to embed in response (useless other than"
+                            "trivial tests)."},
     {"rmd", OPT_RMD, 's'},
     {"header", OPT_HEADER, 's', "key=value header to add"},
     {"", OPT_MD, '-', "Any supported digest"},
@@ -224,6 +228,7 @@ int ocsp_main(int argc, char **argv)
     STACK_OF(OPENSSL_STRING) *reqnames = NULL;
     STACK_OF(X509) *sign_other = NULL, *verify_other = NULL, *rother = NULL;
     STACK_OF(X509) *issuers = NULL;
+    STACK_OF(CTSCT) *scts = NULL;
     X509 *issuer = NULL, *cert = NULL, *rca_cert = NULL;
     X509 *signer = NULL, *rsigner = NULL;
     X509_STORE *store = NULL;
@@ -234,7 +239,7 @@ int ocsp_main(int argc, char **argv)
     char *reqout = NULL, *respout = NULL, *ridx_filename = NULL;
     char *rsignfile = NULL, *rkeyfile = NULL;
     char *sign_certfile = NULL, *verify_certfile = NULL, *rcertfile = NULL;
-    char *signfile = NULL, *keyfile = NULL;
+    char *signfile = NULL, *keyfile = NULL, *sctfile = NULL;
     char *thost = NULL, *tport = NULL, *tpath = NULL;
     int accept_count = -1, add_nonce = 1, noverify = 0, use_ssl = -1;
     int vpmtouched = 0, badsig = 0, i, ignore_err = 0, nmin = 0, ndays = -1;
@@ -474,6 +479,9 @@ int ocsp_main(int argc, char **argv)
             if (!opt_md(opt_unknown(), &cert_id_md))
                 goto opthelp;
             break;
+        case OPT_SCTS:
+            sctfile = opt_arg();
+            break;
         }
     }
     argc = opt_num_rest();
@@ -485,6 +493,12 @@ int ocsp_main(int argc, char **argv)
 
     if (!app_load_modules(NULL))
         goto end;
+
+    if (sctfile) {
+        scts = load_scts(sctfile, FORMAT_PEM);
+        if (scts == NULL)
+            goto end;
+    }
 
     out = bio_open_default(outfile, "w");
     if (out == NULL)
@@ -612,7 +626,8 @@ int ocsp_main(int argc, char **argv)
 
     if (rdb) {
         make_ocsp_response(&resp, req, rdb, rca_cert, rsigner, rkey,
-                               rsign_md, rother, rflags, nmin, ndays, badsig);
+                               rsign_md, rother, rflags, nmin, ndays, badsig,
+                               scts);
         if (cbio)
             send_ocsp_response(cbio, resp);
     } else if (host) {
@@ -756,6 +771,7 @@ int ocsp_main(int argc, char **argv)
     sk_X509_pop_free(sign_other, X509_free);
     sk_X509_pop_free(verify_other, X509_free);
     sk_CONF_VALUE_pop_free(headers, X509V3_conf_free);
+    sk_CTSCT_pop_free(scts, CTSCT_free);
     OPENSSL_free(thost);
     OPENSSL_free(tport);
     OPENSSL_free(tpath);
@@ -881,11 +897,41 @@ static void print_ocsp_summary(BIO *out, OCSP_BASICRESP *bs, OCSP_REQUEST *req,
     }
 }
 
+int add_scts_to_ocsp_response(OCSP_SINGLERESP *single, STACK_OF(CTSCT) *scts)
+{
+    int rv = 0;
+    X509_EXTENSION *ext = NULL;
+
+    int ext_pos = OCSP_SINGLERESP_get_ext_by_NID(single, NID_ct_cert_scts, -1);
+    if (ext_pos < 0) { /* Only add if not already there */
+        ext = create_sct_list_X509_extension(NID_ct_cert_scts, scts);
+        if (ext == NULL)
+            goto err;
+
+        if (OCSP_SINGLERESP_add_ext(single, ext, -1) != 1) {
+            BIO_printf(bio_err,
+                       "ERROR: adding extension to cert\n");
+            ERR_print_errors(bio_err);
+            goto err;
+        }
+        rv = 1;
+        /* TODO(aeijdenberg) memory handling for os and ext */
+    }
+err:
+    if (ext) {
+        X509_EXTENSION_free(ext);
+        ext = NULL;
+    }
+    return rv;
+}
+
+
 static void make_ocsp_response(OCSP_RESPONSE **resp, OCSP_REQUEST *req,
                               CA_DB *db, X509 *ca, X509 *rcert,
                               EVP_PKEY *rkey, const EVP_MD *rmd,
                               STACK_OF(X509) *rother, unsigned long flags,
-                              int nmin, int ndays, int badsig)
+                              int nmin, int ndays, int badsig,
+                              STACK_OF(CTSCT) *scts)
 {
     ASN1_TIME *thisupd = NULL, *nextupd = NULL;
     OCSP_CERTID *cid, *ca_id = NULL;
@@ -912,6 +958,7 @@ static void make_ocsp_response(OCSP_RESPONSE **resp, OCSP_REQUEST *req,
         char **inf;
         ASN1_OBJECT *cert_id_md_oid;
         const EVP_MD *cert_id_md;
+        OCSP_SINGLERESP *single = NULL;
         one = OCSP_request_onereq_get0(req, i);
         cid = OCSP_onereq_get0_id(one);
 
@@ -936,18 +983,17 @@ static void make_ocsp_response(OCSP_RESPONSE **resp, OCSP_REQUEST *req,
         OCSP_id_get0_info(NULL, NULL, NULL, &serial, cid);
         inf = lookup_serial(db, serial);
         if (!inf)
-            OCSP_basic_add1_status(bs, cid,
+            single = OCSP_basic_add1_status(bs, cid,
                                    V_OCSP_CERTSTATUS_UNKNOWN,
                                    0, NULL, thisupd, nextupd);
         else if (inf[DB_type][0] == DB_TYPE_VAL)
-            OCSP_basic_add1_status(bs, cid,
+            single = OCSP_basic_add1_status(bs, cid,
                                    V_OCSP_CERTSTATUS_GOOD,
                                    0, NULL, thisupd, nextupd);
         else if (inf[DB_type][0] == DB_TYPE_REV) {
             ASN1_OBJECT *inst = NULL;
             ASN1_TIME *revtm = NULL;
             ASN1_GENERALIZEDTIME *invtm = NULL;
-            OCSP_SINGLERESP *single;
             int reason = -1;
             unpack_revinfo(&revtm, &reason, &inst, &invtm, inf[DB_rev_date]);
             single = OCSP_basic_add1_status(bs, cid,
@@ -964,6 +1010,8 @@ static void make_ocsp_response(OCSP_RESPONSE **resp, OCSP_REQUEST *req,
             ASN1_TIME_free(revtm);
             ASN1_GENERALIZEDTIME_free(invtm);
         }
+        if (single && scts)
+            add_scts_to_ocsp_response(single, scts);
     }
 
     OCSP_copy_nonce(bs, req);

@@ -164,6 +164,7 @@
 # include <openssl/err.h>
 # include <openssl/ssl.h>
 # include <openssl/symhacks.h>
+# include "crypto/ct/ct_internal.h"
 
 #include "record/record.h"
 #include "packet_locl.h"
@@ -716,6 +717,7 @@ struct ssl_ctx_st {
     /* same as above but sorted for lookup */
     STACK_OF(SSL_CIPHER) *cipher_list_by_id;
     struct x509_store_st /* X509_STORE */ *cert_store;
+    CTLOG_STORE *ctlog_store; /* CT Log Store */
     LHASH_OF(SSL_SESSION) *sessions;
     /*
      * Most session-ids that will be cached, default is
@@ -839,6 +841,9 @@ struct ssl_ctx_st {
     X509_VERIFY_PARAM *param;
 
     int quiet_shutdown;
+
+    /* Signed Certificate Timestamps received by TLS extension */
+    ct_policy tlsext_ct_policy;
 
     /*
      * Maximum amount of data to send in one fragment. actual record size can
@@ -1110,6 +1115,13 @@ struct ssl_st {
     /* certificate status request info */
     /* Status type or -1 if no status type */
     int tlsext_status_type;
+    /* Signed Certificate Timestamps received by TLS extension */
+    ct_policy tlsext_ct_policy;
+    STACK_OF(CTSCT) *tlsext_scts; /* Consolidated stack of SCTs from all sources - lazily populated by CT_get_peer_scts(SSL *) */
+    unsigned char *tls_ext_sct_data; /* Raw extension data if seen */
+    uint16_t tls_ext_sct_data_len; /* Length of raw extension data if seen */
+    EVP_PKEY *tlsext_sct_par_pkey; /* Public key of cert that signed our cert - needed */
+    int tlsext_ct_have_parsed; /* Have we attempted to look/parse SCTs yet? */
     /* Expect OCSP CertificateStatus message */
     int tlsext_status_expected;
     /* OCSP status request only */

@@ -632,6 +632,7 @@ EVP_PKEY *d2i_PUBKEY_fp(FILE *fp, EVP_PKEY **a);
 
 X509 *d2i_X509_bio(BIO *bp, X509 **x509);
 int i2d_X509_bio(BIO *bp, X509 *x509);
+int i2d_re_X509_tbs_bio(BIO *bp, X509 *x509);
 X509_CRL *d2i_X509_CRL_bio(BIO *bp, X509_CRL **crl);
 int i2d_X509_CRL_bio(BIO *bp, X509_CRL *crl);
 X509_REQ *d2i_X509_REQ_bio(BIO *bp, X509_REQ **req);

@@ -131,6 +131,8 @@
 #  include <signal.h>
 # endif
 
+# include "crypto/ct/ct_internal.h"
+
 # if defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WINCE)
 #  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
 # else
@@ -441,6 +443,11 @@ STACK_OF(X509_CRL) *load_crls(const char *file, int format,
 X509_STORE *setup_verify(char *CAfile, char *CApath);
 int ctx_set_verify_locations(SSL_CTX *ctx,
                              const char *CAfile, const char *CApath);
+
+STACK_OF(CTSCT) *load_scts(char *in_path, int in_form);
+int precert_strip_poison(X509 *cert);
+X509_EXTENSION *create_sct_list_X509_extension(int nid, STACK_OF(CTSCT) *scts);
+
 # ifdef OPENSSL_NO_ENGINE
 #  define setup_engine(engine, debug) NULL
 # else
@@ -563,5 +570,23 @@ int raw_write_stdout(const void *, int);
 double app_tminterval(int stop, int usertime);
 
 # include "progs.h"
+
+/*
+ * We need a format operator for some client tools for uint64_t.
+ * This is our attempt at doing so in a portable manner.
+ * If we can't use a built-in definition, we'll revert to the previous
+ * behavior that was hard-coded but now causing compiler warnings on
+ * some systems (e.g. Mac OS X).
+ */
+# ifndef PRIu64
+#  if (__STDC_VERSION__ >= 199901L)
+#   include <inttypes.h>
+#  endif
+#  ifndef PRIu64
+#   define PRIu64 "lu"
+#  endif
+# endif
+
+
 
 #endif

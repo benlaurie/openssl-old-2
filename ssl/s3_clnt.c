@@ -155,6 +155,7 @@
 #include <openssl/objects.h>
 #include <openssl/evp.h>
 #include <openssl/md5.h>
+#include <openssl/ct.h>
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>
 #endif
@@ -2327,6 +2328,14 @@ int ssl3_get_server_done(SSL *s)
         SSLerr(SSL_F_SSL3_GET_SERVER_DONE, SSL_R_LENGTH_MISMATCH);
         s->state = SSL_ST_ERR;
         return -1;
+    }
+    if (s->tlsext_ct_policy != CT_POLICY_NONE) {
+      if (!CT_validate_connection(s)) {
+        ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        SSLerr(SSL_F_SSL3_GET_SERVER_DONE, SSL_R_CT_FAILURE);
+        s->state = SSL_ST_ERR;
+        return -1;
+      } 
     }
     ret = 1;
     return (ret);
