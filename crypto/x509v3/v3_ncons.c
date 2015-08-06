@@ -79,7 +79,7 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc);
 static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen);
 static int nc_dn(X509_NAME *sub, X509_NAME *nm);
 static int nc_dns(ASN1_IA5STRING *sub, ASN1_IA5STRING *dns);
-static int nc_email(ASN1_IA5STRING *sub, ASN1_IA5STRING *eml);
+static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
 static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base);
 static int nc_ip(ASN1_OCTET_STRING *ip, ASN1_OCTET_STRING *base);
 
@@ -394,7 +394,7 @@ static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base)
 
 }
 
-static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
+static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base)
 {
     const char *baseptr = (char *)base->data;
     const char *emlptr = (char *)eml->data;

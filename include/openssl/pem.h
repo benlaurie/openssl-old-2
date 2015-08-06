@@ -392,7 +392,7 @@ void PEM_dek_info(char *buf, const char *type, int len, char *str);
 
 # include <openssl/symhacks.h>
 
-DECLARE_PEM_rw(X509, X509)
+DECLARE_PEM_rw_const(X509, X509)
 DECLARE_PEM_rw(X509_AUX, X509)
 DECLARE_PEM_rw(X509_REQ, X509_REQ)
 DECLARE_PEM_write(X509_REQ_NEW, X509_REQ)

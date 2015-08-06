@@ -183,7 +183,7 @@ int BIO_dump_indent(BIO *bp, const char *s, int len, int indent)
     return BIO_dump_indent_cb(write_bio, bp, s, len, indent);
 }
 
-int BIO_hex_string(BIO *out, int indent, int width, unsigned char *data,
+int BIO_hex_string(BIO *out, int indent, int width, const unsigned char *data,
                    int datalen)
 {
     int i, j = 0;

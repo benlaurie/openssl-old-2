@@ -413,7 +413,7 @@ void destroy_ui_method(void);
 int chopup_args(ARGS *arg, char *buf);
 # ifdef HEADER_X509_H
 int dump_cert_text(BIO *out, X509 *x);
-void print_name(BIO *out, const char *title, X509_NAME *nm,
+void print_name(BIO *out, const char *title, const X509_NAME *nm,
                 unsigned long lflags);
 # endif
 void print_bignum_var(BIO *, BIGNUM *, const char*, int, unsigned char *);

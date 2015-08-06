@@ -188,7 +188,7 @@ typedef struct GENERAL_NAME_st {
     union {
         char *ptr;
         OTHERNAME *otherName;   /* otherName */
-        ASN1_IA5STRING *rfc822Name;
+        const ASN1_IA5STRING *rfc822Name;
         ASN1_IA5STRING *dNSName;
         ASN1_TYPE *x400Address;
         X509_NAME *directoryName;

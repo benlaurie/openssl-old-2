@@ -712,7 +712,7 @@ int BIO_dump_indent(BIO *b, const char *bytes, int len, int indent);
 int BIO_dump_fp(FILE *fp, const char *s, int len);
 int BIO_dump_indent_fp(FILE *fp, const char *s, int len, int indent);
 # endif
-int BIO_hex_string(BIO *out, int indent, int width, unsigned char *data,
+int BIO_hex_string(BIO *out, int indent, int width, const unsigned char *data,
                    int datalen);
 
 struct hostent *BIO_gethostbyname(const char *name);

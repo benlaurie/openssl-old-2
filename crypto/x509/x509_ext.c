@@ -116,9 +116,9 @@ int X509_get_ext_count(X509 *x)
     return (X509v3_get_ext_count(x->cert_info->extensions));
 }
 
-int X509_get_ext_by_NID(X509 *x, int nid, int lastpos)
+int X509_get_ext_by_NID(const X509 *x, int nid, int lastpos)
 {
-    return (X509v3_get_ext_by_NID(x->cert_info->extensions, nid, lastpos));
+    return X509v3_get_ext_by_NID(x->cert_info->extensions, nid, lastpos);
 }
 
 int X509_get_ext_by_OBJ(X509 *x, ASN1_OBJECT *obj, int lastpos)

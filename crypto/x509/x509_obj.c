@@ -64,7 +64,7 @@
 #include <openssl/buffer.h>
 #include "internal/x509_int.h"
 
-char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
+char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len)
 {
     X509_NAME_ENTRY *ne;
     int i;

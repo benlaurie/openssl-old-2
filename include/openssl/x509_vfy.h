@@ -466,8 +466,8 @@ X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
 int X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
 int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x);
 
-int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
-                              X509_OBJECT *ret);
+int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type,
+                              X509_NAME *name, X509_OBJECT *ret);
 
 int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
                      long argl, char **ret);
