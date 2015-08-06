@@ -145,7 +145,7 @@ unsigned long X509_issuer_name_hash_old(X509 *x)
 }
 #endif
 
-X509_NAME *X509_get_subject_name(X509 *a)
+X509_NAME *X509_get_subject_name(const X509 *a)
 {
     return (a->cert_info->subject);
 }
@@ -304,7 +304,7 @@ X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name)
     return (NULL);
 }
 
-EVP_PKEY *X509_get_pubkey(X509 *x)
+EVP_PKEY *X509_get_pubkey(const X509 *x)
 {
     if ((x == NULL) || (x->cert_info == NULL))
         return (NULL);

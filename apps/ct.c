@@ -82,11 +82,12 @@
 
 #define SECTION         "ct"
 
-int extract_public_key_hash(EVP_PKEY *key, unsigned char *buf32);
-BUF_MEM *do_create_sct(X509 *cert, uint64_t ts, EVP_PKEY *key, X509 *cacert,
-                       int bogus_version, int bogus_ext, int bogus_entry);
-STACK_OF(CTLOG) *load_ctlogs(char *in_path, int in_form);
-int is_precert(X509 *cert);
+static int extract_public_key_hash(const EVP_PKEY *key, unsigned char *buf32);
+static BUF_MEM *do_create_sct(X509 *cert, uint64_t ts, EVP_PKEY *key,
+                              const X509 *cacert, int bogus_version,
+                              int bogus_ext, int bogus_entry);
+static STACK_OF(CTLOG) *load_ctlogs(const char *in_path, int in_form);
+static int is_precert(const X509 *cert);
 
 typedef enum OPTION_choice {
     OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
@@ -129,7 +130,7 @@ OPTIONS ct_options[] = {
     {NULL}
 };
 
-int extract_public_key_hash(EVP_PKEY *key, unsigned char *buf32)
+static int extract_public_key_hash(const EVP_PKEY *key, unsigned char *buf32)
 {
     int rv = 0;
     BIO *tmp_key = NULL;
@@ -149,16 +150,14 @@ int extract_public_key_hash(EVP_PKEY *key, unsigned char *buf32)
     SHA256((unsigned char *)tmp_ptr->data, tmp_ptr->length, buf32);
 
     rv = 1;
-end:
-    if (tmp_key) {
-        BIO_free_all(tmp_key);
-        tmp_key = NULL;
-    }
+
+ end:
+    BIO_free_all(tmp_key);
 
     return rv;
 }
 
-STACK_OF(CTLOG) *load_ctlogs(char *in_path, int in_form)
+static STACK_OF(CTLOG) *load_ctlogs(const char *in_path, int in_form)
 {
     STACK_OF(CTLOG) *rv = NULL;
     BIO *in = NULL;
@@ -190,51 +189,29 @@ STACK_OF(CTLOG) *load_ctlogs(char *in_path, int in_form)
                 log = CTLOG_create_log_from_json_fragment(jf);
                 if (log == NULL)
                     goto end;
+
                 JSON_FRAGMENT_free(jf);
                 jf = NULL;
 
                 sk_CTLOG_push(rv, log);
                 log = NULL;
             }
-            if (name) {
-                OPENSSL_free(name);
-                name = NULL;
-            }
-            if (header) {
-                OPENSSL_free(header);
-                header = NULL;
-            }
-            if (data) {
-                OPENSSL_free(data);
-                data = NULL;
-            }
+            OPENSSL_free(name);
+            name = NULL;
+            OPENSSL_free(header);
+            header = NULL;
+            OPENSSL_free(data);
+            data = NULL;
         }
     }
-end:
-    if (jf) {
-        JSON_FRAGMENT_free(jf);
-        jf = NULL;
-    }
-    if (log) {
-        CTLOG_free(log);
-        log = NULL;
-    }
-    if (in) {
-        BIO_free_all(in);
-        in = NULL;
-    }
-    if (name) {
-        OPENSSL_free(name);
-        name = NULL;
-    }
-    if (header) {
-        OPENSSL_free(header);
-        header = NULL;
-    }
-    if (data) {
-        OPENSSL_free(data);
-        data = NULL;
-    }
+    
+end: 
+    JSON_FRAGMENT_free(jf);
+    CTLOG_free(log);
+    BIO_free_all(in);
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(data);
 
     return rv;
 }
@@ -271,18 +248,15 @@ STACK_OF(CTSCT) *load_scts(char *in_path, int in_form)
                 sk_CTSCT_push(rv, sct);
                 sct = NULL;
             }
-            if (name) {
-                OPENSSL_free(name);
-                name = NULL;
-            }
-            if (header) {
-                OPENSSL_free(header);
-                header = NULL;
-            }
-            if (data) {
-                OPENSSL_free(data);
-                data = NULL;
-            }
+
+            OPENSSL_free(name);
+            name = NULL;
+
+            OPENSSL_free(header);
+            header = NULL;
+
+            OPENSSL_free(data);
+            data = NULL;
         }
     } else {
         sct = CTSCT_alloc();
@@ -293,34 +267,20 @@ STACK_OF(CTSCT) *load_scts(char *in_path, int in_form)
         sk_CTSCT_push(rv, sct);
         sct = NULL;
     }
-end:
-    if (sct) {
-        CTSCT_free(sct);
-        sct = NULL;
-    }
-    if (in) {
-        BIO_free_all(in);
-        in = NULL;
-    }
-    if (name) {
-        OPENSSL_free(name);
-        name = NULL;
-    }
-    if (header) {
-        OPENSSL_free(header);
-        header = NULL;
-    }
-    if (data) {
-        OPENSSL_free(data);
-        data = NULL;
-    }
+
+ end:
+    CTSCT_free(sct);
+    BIO_free_all(in);
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(data);
 
     return rv;
 }
 
-int is_precert(X509 *cert)
+static int is_precert(const X509 *cert)
 {
-    return (cert && (X509_get_ext_by_NID(cert, NID_ct_precert_poison, -1) >= 0));
+    return cert && X509_get_ext_by_NID(cert, NID_ct_precert_poison, -1) >= 0;
 }
 
 int precert_strip_poison(X509 *cert)
@@ -341,8 +301,9 @@ err:
     return 0;
 }
 
-BUF_MEM *do_create_sct(X509 *cert, uint64_t ts, EVP_PKEY *key, X509 *cacert,
-                       int bogus_version, int bogus_ext, int bogus_entry)
+BUF_MEM *do_create_sct(X509 *cert, uint64_t ts, EVP_PKEY *key,
+                       const X509 *cacert, int bogus_version, int bogus_ext,
+                       int bogus_entry)
 {
     BIO *out = NULL;
     BIO *tbs = NULL;
@@ -555,30 +516,16 @@ BUF_MEM *do_create_sct(X509 *cert, uint64_t ts, EVP_PKEY *key, X509 *cacert,
 
     /* TODO(aeijdenberg): am I meant to free EVP_PKEY_CTX? */
 end:
-    if (out) {
-        BIO_free_all(out);
-        out = NULL;
-    }
-    if (capubkey) {
-        EVP_PKEY_free(capubkey);
-        capubkey = NULL;
-    }
-    if (tbs) {
-        BIO_free_all(tbs);
-        tbs = NULL;
-    }
+    BIO_free_all(out);
+    EVP_PKEY_free(capubkey);
+    BIO_free_all(tbs);
     if (md_needs_cleanup) {
         EVP_MD_CTX_cleanup(&ctx);
         md_needs_cleanup = 0;
     }
-    if (sig) {
-        OPENSSL_free(sig);
-        sig = NULL;
-    }
-    if (bogus_ext_data) {
-        OPENSSL_free(bogus_ext_data);
-        bogus_ext_data = NULL;
-    }
+    OPENSSL_free(sig);
+    OPENSSL_free(bogus_ext_data);
+
     return rv;
 }
 
@@ -835,41 +782,18 @@ opthelp:
         BIO_free_all(out);
         out = NULL;
     }
-    if (log) {
-        CTLOG_free(log);
-        log = NULL;
-    }
-    if (cert) {
-        X509_free(cert);
-        cert = NULL;
-    }
-    if (cacert) {
-        X509_free(cacert);
-        cacert = NULL;
-    }
-    if (key) {
-        EVP_PKEY_free(key);
-        key = NULL;
-    }
-    if (tmpout) {
-        BIO_free_all(tmpout);
-        tmpout = NULL;
-    }
-    if (out_data) {
-        OPENSSL_free(out_data);
-        out_data = NULL;
-    }
-    if (scts) {
-        sk_CTSCT_pop_free(scts, CTSCT_free);
-        scts = NULL;
-    }
-    if (logs) {
-        sk_CTLOG_pop_free(logs, CTLOG_free);
-    }
+    CTLOG_free(log);
+    X509_free(cert);
+    X509_free(cacert);
+    EVP_PKEY_free(key);
+    BIO_free_all(tmpout);
+    OPENSSL_free(out_data);
+    sk_CTSCT_pop_free(scts, CTSCT_free);
+    sk_CTLOG_pop_free(logs, CTLOG_free);
 
     if (ret) {
         BIO_printf(bio_err, "Error somewhere.\n");
         ERR_print_errors(bio_err);
     }
-    return (ret);
+    return ret;
 }

@@ -89,8 +89,8 @@ int SSL_CTX_apply_certificate_transparency_policy(SSL_CTX *ctx, ct_policy policy
 ct_policy SSL_CTX_get_certificate_transparency_policy(SSL_CTX *ctx);
 
 /* Get and print SCT objects */
-STACK_OF(CTSCT) *SSL_get_peer_scts(SSL *s);
-void CT_print_sct(BIO *bio, CTSCT *sct);
+const STACK_OF(CTSCT) *SSL_get_peer_scts(SSL *s);
+void CT_print_sct(BIO *bio, const CTSCT *sct);
 
 /*
  * Load JSON list of logs such as downloaded from:

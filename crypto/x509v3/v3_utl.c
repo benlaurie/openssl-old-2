@@ -70,7 +70,8 @@ static int sk_strcmp(const char *const *a, const char *const *b);
 static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
                                            GENERAL_NAMES *gens);
 static void str_free(OPENSSL_STRING str);
-static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email);
+static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
+                      const ASN1_IA5STRING *email);
 
 static int ipv4_from_asc(unsigned char *v4, const char *in);
 static int ipv6_from_asc(unsigned char *v6, const char *in);
@@ -568,8 +569,8 @@ static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
                                            GENERAL_NAMES *gens)
 {
     STACK_OF(OPENSSL_STRING) *ret = NULL;
-    X509_NAME_ENTRY *ne;
-    ASN1_IA5STRING *email;
+    const X509_NAME_ENTRY *ne;
+    const ASN1_IA5STRING *email;
     GENERAL_NAME *gen;
     int i;
     /* Now add any email address(es) to STACK */
@@ -597,7 +598,8 @@ static void str_free(OPENSSL_STRING str)
     OPENSSL_free(str);
 }
 
-static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email)
+static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
+                      const ASN1_IA5STRING *email)
 {
     char *emtmp;
     /* First some sanity checks */
@@ -878,7 +880,7 @@ static int equal_wildcard(const unsigned char *pattern, size_t pattern_len,
  * to UTF8.
  */
 
-static int do_check_string(ASN1_STRING *a, int cmp_type, equal_fn equal,
+static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
                            unsigned int flags, const char *b, size_t blen,
                            char **peername)
 {
@@ -955,7 +957,7 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     if (gens) {
         for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
             GENERAL_NAME *gen;
-            ASN1_STRING *cstr;
+            const ASN1_STRING *cstr;
             gen = sk_GENERAL_NAME_value(gens, i);
             if (gen->type != check_type)
                 continue;
@@ -982,8 +984,8 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     i = -1;
     name = X509_get_subject_name(x);
     while ((i = X509_NAME_get_index_by_NID(name, cnid, i)) >= 0) {
-        X509_NAME_ENTRY *ne;
-        ASN1_STRING *str;
+        const X509_NAME_ENTRY *ne;
+        const ASN1_STRING *str;
         ne = X509_NAME_get_entry(name, i);
         str = X509_NAME_ENTRY_get_data(ne);
         /* Positive on success, negative on error! */

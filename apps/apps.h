@@ -415,7 +415,7 @@ void destroy_ui_method(void);
 int chopup_args(ARGS *arg, char *buf);
 # ifdef HEADER_X509_H
 int dump_cert_text(BIO *out, X509 *x);
-void print_name(BIO *out, const char *title, X509_NAME *nm,
+void print_name(BIO *out, const char *title, const X509_NAME *nm,
                 unsigned long lflags);
 # endif
 void print_bignum_var(BIO *, BIGNUM *, const char*, int, unsigned char *);
@@ -446,7 +446,8 @@ int ctx_set_verify_locations(SSL_CTX *ctx,
 
 STACK_OF(CTSCT) *load_scts(char *in_path, int in_form);
 int precert_strip_poison(X509 *cert);
-X509_EXTENSION *create_sct_list_X509_extension(int nid, STACK_OF(CTSCT) *scts);
+X509_EXTENSION *create_sct_list_X509_extension(int nid,
+					       const STACK_OF(CTSCT) *scts);
 
 # ifdef OPENSSL_NO_ENGINE
 #  define setup_engine(engine, debug) NULL

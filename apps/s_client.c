@@ -2058,9 +2058,9 @@ static void print_stuff(BIO *bio, SSL *s, int full)
 {
     X509 *peer = NULL;
     char buf[BUFSIZ];
-    STACK_OF(CTSCT) *scts;
-    STACK_OF(X509) *sk;
-    STACK_OF(X509_NAME) *sk2;
+    const STACK_OF(CTSCT) *scts;
+    const STACK_OF(X509) *sk;
+    const STACK_OF(X509_NAME) *sk2;
     const SSL_CIPHER *c;
     X509_NAME *xn;
     int i;

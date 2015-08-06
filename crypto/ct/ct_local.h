@@ -128,28 +128,27 @@ struct jf_st {
     STACK_OF(JSON_FRAGMENT) *children;
 };
 
-
-
-CTLOG *CT_get_log_by_id(SSL_CTX *ctx, uint8_t *id);
-
-
+CTLOG *CT_get_log_by_id(const SSL_CTX *ctx, const uint8_t *id);
 
 void CT_base64_decode(char *in, uint16_t in_len,
                       char **out, uint16_t *out_len);
-JSON_FRAGMENT *CT_json_get_value(JSON_FRAGMENT *par, char *key);
-
+const JSON_FRAGMENT *CT_json_get_value(const JSON_FRAGMENT *par,
+                                       const char *key);
 
 int CT_parse_sct_list(uint8_t *data, unsigned short size,
                       STACK_OF(CTSCT) **results, sct_source src);
 int CT_extract_tls_extension_scts(SSL *s);
 int CT_extract_ocsp_response_scts(SSL *s);
 int CT_extract_x509v3_extension_scts(SSL *s);
-int CT_validate_signature(CTLOG *log, uint8_t *data, uint32_t data_len,
-                          uint8_t *sig, uint32_t sig_len, uint8_t hash_alg);
-int CT_validate_sct(CTSCT *sct, X509 *cert, EVP_PKEY *pkey, SSL_CTX *ctx);
-int CT_parse_sct_list_from_x509_extension(X509_EXTENSION *ext,
-                                    STACK_OF(CTSCT) **results, sct_source src);
-int CT_tls_encode_sct_bio(BIO *out, CTSCT *sct);
+int CT_validate_signature(const CTLOG *log, const uint8_t *data,
+                          uint32_t data_len, const uint8_t *sig,
+                          uint32_t sig_len, uint8_t hash_alg);
+int CT_validate_sct(CTSCT *sct, X509 *cert, EVP_PKEY *pkey,
+                    const SSL_CTX *ctx);
+int CT_parse_sct_list_from_x509_extension(const X509_EXTENSION *ext,
+                                          STACK_OF(CTSCT) **results,
+                                          sct_source src);
+int CT_tls_encode_sct_bio(BIO *out, const CTSCT *sct);
 
 JSON_FRAGMENT *JSON_FRAGMENT_alloc(json_token_type t);
 int CT_json_complete_array(STACK_OF(JSON_FRAGMENT) *frags);

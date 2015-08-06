@@ -754,7 +754,7 @@ int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
 int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned long flags);
 # endif
 
-int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
+int ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in);
 
 void *ASN1_d2i_bio(void *(*xnew) (void), d2i_of_void *d2i, BIO *in, void **x);
 
@@ -825,11 +825,12 @@ void ASN1_STRING_TABLE_cleanup(void);
 /* ASN1 template functions */
 
 /* Old API compatible functions */
-ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
+const ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
 void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
 ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **val, const unsigned char **in,
                           long len, const ASN1_ITEM *it);
-int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
+int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out,
+                  const ASN1_ITEM *it);
 int ASN1_item_ndef_i2d(ASN1_VALUE *val, unsigned char **out,
                        const ASN1_ITEM *it);
 

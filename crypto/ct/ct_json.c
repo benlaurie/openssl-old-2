@@ -71,7 +71,7 @@
 
 
 
-int CT_json_write_string(BIO *out, char *data, int len)
+int CT_json_write_string(BIO *out, const char *data, int len)
 {
     int i;
 
@@ -125,22 +125,18 @@ err:
 void JSON_FRAGMENT_free(JSON_FRAGMENT *f)
 {
     if (f) {
-        if (f->buffer) {
-            BUF_MEM_free(f->buffer);
-            f->buffer = NULL;
-        }
-        if (f->name) {
-            JSON_FRAGMENT_free(f->name);
-            f->name = NULL;
-        }
-        if (f->value) {
-            JSON_FRAGMENT_free(f->value);
-            f->value = NULL;
-        }
-        if (f->children) {
-            sk_JSON_FRAGMENT_pop_free(f->children, JSON_FRAGMENT_free);
-            f->children = NULL;
-        }
+        BUF_MEM_free(f->buffer);
+        f->buffer = NULL;
+
+        JSON_FRAGMENT_free(f->name);
+        f->name = NULL;
+
+        JSON_FRAGMENT_free(f->value);
+        f->value = NULL;
+
+        sk_JSON_FRAGMENT_pop_free(f->children, JSON_FRAGMENT_free);
+        f->children = NULL;
+
         OPENSSL_free(f);
     }
 }
@@ -159,10 +155,8 @@ JSON_FRAGMENT *JSON_FRAGMENT_alloc(json_token_type t)
 
     return rv;
 err:
-    if (rv) {
-        JSON_FRAGMENT_free(rv);
-        rv = NULL;
-    }
+    JSON_FRAGMENT_free(rv);
+
     return NULL;
 }
 
@@ -250,15 +244,9 @@ int CT_json_complete_array(STACK_OF(JSON_FRAGMENT) *frags)
     }
 
     rv = 1;
-err:
-    if (p) {
-        JSON_FRAGMENT_free(p);
-        p = NULL;
-    }
-    if (q) {
-        JSON_FRAGMENT_free(q);
-        q = NULL;
-    }
+ err:
+    JSON_FRAGMENT_free(p);
+    JSON_FRAGMENT_free(q);
 
     return rv;
 }
@@ -381,23 +369,14 @@ int CT_json_complete_dict(STACK_OF(JSON_FRAGMENT) *frags)
 
     rv = 1;
 err:
-    if (p) {
-        JSON_FRAGMENT_free(p);
-        p = NULL;
-    }
-    if (q) {
-        JSON_FRAGMENT_free(q);
-        q = NULL;
-    }
-    if (nv) {
-        JSON_FRAGMENT_free(nv);
-        nv = NULL;
-    }
+    JSON_FRAGMENT_free(p);
+    JSON_FRAGMENT_free(q);
+    JSON_FRAGMENT_free(nv);
 
     return rv;
 }
 
-JSON_FRAGMENT *CT_parse_json(char *data, uint32_t len)
+JSON_FRAGMENT *CT_parse_json(const char *data, uint32_t len)
 {
     JSON_FRAGMENT *rv = NULL;
     uint32_t i;
@@ -624,19 +603,14 @@ JSON_FRAGMENT *CT_parse_json(char *data, uint32_t len)
     }
 
 err:
-    if (frags) {
-        sk_JSON_FRAGMENT_pop_free(frags, JSON_FRAGMENT_free);
-        frags = NULL;
-    }
-    if (curbuf) {
-        BIO_free_all(curbuf);
-        curbuf = NULL;
-    }
+    sk_JSON_FRAGMENT_pop_free(frags, JSON_FRAGMENT_free);
+    BIO_free_all(curbuf);
 
     return rv;
 }
 
-JSON_FRAGMENT *CT_json_get_value(JSON_FRAGMENT *par, char *key)
+const JSON_FRAGMENT *CT_json_get_value(const JSON_FRAGMENT *par,
+                                       const char *key)
 {
     uint32_t kl = strlen(key);
     if (par && par->type == OBJ_DICT && par->children) {
@@ -680,14 +654,8 @@ void CT_base64_decode(char *in, uint16_t in_len,
         goto err;
     *out_len = BIO_read(bmem, *out, in_len);
 err:
-    if (b64) {
-        BIO_free_all(b64);
-        b64 = NULL;
-    }
-    if (bmem) {
-        BIO_free_all(bmem);
-        bmem = NULL;
-    }
+    BIO_free_all(b64);
+    BIO_free_all(bmem);
 }
 
 BUF_MEM *CT_base64_encode(BUF_MEM *in)
@@ -728,13 +696,8 @@ BUF_MEM *CT_base64_encode(BUF_MEM *in)
     }
 
 err:
-    if (b64) {
-        BIO_free_all(b64);
-        b64 = NULL;
-    }
-    if (bmem) {
-        BIO_free_all(bmem);
-        bmem = NULL;
-    }
+    BIO_free_all(b64);
+    BIO_free_all(bmem);
+
     return rv;
 }

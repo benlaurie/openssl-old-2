@@ -71,12 +71,12 @@
 # include <openssl/dsa.h>
 #endif
 
-int X509_verify(X509 *a, EVP_PKEY *r)
+int X509_verify(const X509 *a, EVP_PKEY *r)
 {
     if (X509_ALGOR_cmp(a->sig_alg, a->cert_info->signature))
         return 0;
-    return (ASN1_item_verify(ASN1_ITEM_rptr(X509_CINF), a->sig_alg,
-                             a->signature, a->cert_info, r));
+    return ASN1_item_verify(ASN1_ITEM_rptr(X509_CINF), a->sig_alg,
+                            a->signature, a->cert_info, r);
 }
 
 int X509_REQ_verify(X509_REQ *a, EVP_PKEY *r)
@@ -553,7 +553,7 @@ EVP_PKEY *d2i_PrivateKey_bio(BIO *bp, EVP_PKEY **a)
     return ASN1_d2i_bio_of(EVP_PKEY, EVP_PKEY_new, d2i_AutoPrivateKey, bp, a);
 }
 
-int i2d_PUBKEY_bio(BIO *bp, EVP_PKEY *pkey)
+int i2d_PUBKEY_bio(BIO *bp, const EVP_PKEY *pkey)
 {
     return ASN1_i2d_bio_of(EVP_PKEY, i2d_PUBKEY, bp, pkey);
 }

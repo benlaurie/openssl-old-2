@@ -92,28 +92,28 @@ int CT_validate_connection(SSL *s);
 CTSCT *CTSCT_alloc(void);
 void CTSCT_free(CTSCT *sct);
 int CT_parse_sct_bio(BIO *in, CTSCT *sct, sct_source src);
-int CT_parse_sct(unsigned char *data, unsigned short size,
-                 CTSCT *sct, sct_source src);
-int CT_server_info_encode_sct_list_bio(BIO *out, STACK_OF(CTSCT) *scts);
-int CT_tls_encode_sct_list_bio(BIO *out, STACK_OF(CTSCT) *scts);
-EVP_PKEY *CT_get_public_key_that_signed(X509_STORE_CTX *ctx);
+int CT_parse_sct(uint8_t *data, unsigned short size, CTSCT *sct,
+		 sct_source src);
+int CT_server_info_encode_sct_list_bio(BIO *out, const STACK_OF(CTSCT) *scts);
+int CT_tls_encode_sct_list_bio(BIO *out, const STACK_OF(CTSCT) *scts);
+EVP_PKEY *CT_get_public_key_that_signed(const X509_STORE_CTX *ctx);
 
 /* Log store management */
 CTLOG_STORE *CTLOG_STORE_new(void);
 void CTLOG_STORE_free(CTLOG_STORE *store);
-int CTLOG_write_bio(BIO *out, CTLOG *log);
+int CTLOG_write_bio(BIO *out, const CTLOG *log);
 
 /* JSON stuff */
-int CT_json_write_string(BIO *out, char *data, int len);
+int CT_json_write_string(BIO *out, const char *data, int len);
 BUF_MEM *CT_base64_encode(BUF_MEM *in);
 void JSON_FRAGMENT_free(JSON_FRAGMENT *f);
-JSON_FRAGMENT *CT_parse_json(char *data, uint32_t len);
+JSON_FRAGMENT *CT_parse_json(const char *data, uint32_t len);
 
 /* Create / free a CT log */
-CTLOG *CTLOG_new(char *pk, uint16_t pkey_len, char *name, uint16_t name_len);
+CTLOG *CTLOG_new(const char *pk, uint16_t pkey_len, const char *name,
+                 uint16_t name_len);
 void CTLOG_free(CTLOG *log);
-CTLOG *CTLOG_create_log_from_json_fragment(JSON_FRAGMENT *log);
-
+CTLOG *CTLOG_create_log_from_json_fragment(const JSON_FRAGMENT *log);
 
 #ifdef  __cplusplus
 }

@@ -73,27 +73,23 @@
 
 #define MAX_CTLOG_SIZE 65535
 
-
-
-int CT_parse_sct(unsigned char *data, unsigned short size,
-                 CTSCT *sct, sct_source src)
+int CT_parse_sct(uint8_t *data, unsigned short size, CTSCT *sct, sct_source src)
 {
     int rv = 0;
     BIO *mem = BIO_new_mem_buf(data, size);
+
     if (mem == NULL) {
         CTerr(CT_F_CT_PARSE_SCT, CT_R_MEM_ERR);
         goto err;
     }
     rv = CT_parse_sct_bio(mem, sct, src);
 err:
-    if (mem) {
-        BIO_free_all(mem);
-        mem = NULL;
-    }
+    BIO_free_all(mem);
+
     return rv;
 }
 
-int CT_server_info_encode_sct_list_bio(BIO *out, STACK_OF(CTSCT) *scts)
+int CT_server_info_encode_sct_list_bio(BIO *out, const STACK_OF(CTSCT) *scts)
 {
     int rv = -1;
     int tentative_rv;
@@ -148,7 +144,7 @@ end:
 }
 
 
-int CT_tls_encode_sct_list_bio(BIO *out, STACK_OF(CTSCT) *scts)
+int CT_tls_encode_sct_list_bio(BIO *out, const STACK_OF(CTSCT) *scts)
 {
     int rv = -1;
     int tentative_rv;
@@ -216,7 +212,7 @@ end:
 }
 
 
-int CT_tls_encode_sct_bio(BIO *out, CTSCT *sct)
+int CT_tls_encode_sct_bio(BIO *out, const CTSCT *sct)
 {
     int rv = -1;
     int tentative_rv;
@@ -483,10 +479,8 @@ int CT_parse_sct_list(uint8_t *data, unsigned short size,
 
     return 1;
 err:
-    if (sct != NULL) {
-        CTSCT_free(sct);
-        sct = NULL;
-    }
+    CTSCT_free(sct);
+
     return 0;
 }
 
@@ -528,8 +522,9 @@ err:
  * *results can be NULL, and stack will be lazily created if so.
  * Return 1 on success, 0 on failure.
  */
-int CT_parse_sct_list_from_x509_extension(X509_EXTENSION *ext,
-                                    STACK_OF(CTSCT) **results, sct_source src)
+int CT_parse_sct_list_from_x509_extension(const X509_EXTENSION *ext,
+					  STACK_OF(CTSCT) **results,
+					  sct_source src)
 {
     ASN1_OCTET_STRING *real_octets = NULL;
     int rv = 0;
@@ -537,7 +532,8 @@ int CT_parse_sct_list_from_x509_extension(X509_EXTENSION *ext,
         CTerr(CT_F_CT_PARSE_SCT_LIST_FROM_X509_EXTENSION, CT_R_X509V3_INVALID_EXTENSION);
         goto err;
     } else {
-        ASN1_OCTET_STRING *os = X509_EXTENSION_get_data(ext);
+        // FIXME: constify X509_EXTENSION_get_data()?
+        const ASN1_OCTET_STRING *os = X509_EXTENSION_get_data((X509_EXTENSION *)ext);
         if (os->length > 0) {
             const unsigned char *p = os->data;
             if (d2i_ASN1_OCTET_STRING(&real_octets, &p, os->length) == NULL) {
@@ -552,10 +548,8 @@ int CT_parse_sct_list_from_x509_extension(X509_EXTENSION *ext,
     }
     rv = 1;
 err:
-    if (real_octets) {
-        ASN1_OCTET_STRING_free(real_octets);
-        real_octets = NULL;
-    }
+    ASN1_OCTET_STRING_free(real_octets);
+
     return rv;
 }
 
@@ -617,14 +611,9 @@ int CT_extract_ocsp_response_scts(SSL *s)
     }
     rv = 1;
 err:
-    if (br != NULL) {
-        OCSP_BASICRESP_free(br);
-        br = NULL;
-    }
-    if (rsp != NULL) {
-        OCSP_RESPONSE_free(rsp);
-        rsp = NULL;
-    }
+    OCSP_BASICRESP_free(br);
+    OCSP_RESPONSE_free(rsp);
+
     return rv;
 }
 
@@ -655,7 +644,7 @@ err:
  * extension and OCSP response.
  * Return pointer to stack on success (do not try to free this), NULL on failure.
  */
-STACK_OF(CTSCT) *SSL_get_peer_scts(SSL *s)
+const STACK_OF(CTSCT) *SSL_get_peer_scts(SSL *s)
 {
     if (s == NULL) {
         CTerr(CT_F_SSL_GET_PEER_SCTS, CT_R_NULL_INPUT);
@@ -750,8 +739,9 @@ ct_policy SSL_CTX_get_certificate_transparency_policy(SSL_CTX *ctx)
  * Given a log, some data, a sig, and a hash algorithm, attempt to verify the signature.
  * Return 1 if valid, 0 otherwise.
  */
-int CT_validate_signature(CTLOG *log, uint8_t *data, uint32_t data_len,
-                          uint8_t *sig, uint32_t sig_len, uint8_t hash_alg)
+int CT_validate_signature(const CTLOG *log, const uint8_t *data,
+                          uint32_t data_len, const uint8_t *sig,
+                          uint32_t sig_len, uint8_t hash_alg)
 {
     int rv = 0;
     EVP_MD_CTX ctx;
@@ -791,13 +781,12 @@ err:
     return rv;
 }
 
-
-
 /*
  * Given an SCT, a cert, and a stack of peers, attempt to validate it.
  * Return 1 if valid, 0 otherwise.
  */
-int CT_validate_sct(CTSCT *sct, X509 *cert, EVP_PKEY *pkey, SSL_CTX *ctx)
+int CT_validate_sct(CTSCT *sct, X509 *cert, EVP_PKEY *pkey,
+                    const SSL_CTX *ctx)
 {
     int rv = 0;
     uint8_t *data = NULL;
@@ -946,26 +935,15 @@ int CT_validate_sct(CTSCT *sct, X509 *cert, EVP_PKEY *pkey, SSL_CTX *ctx)
 end:
     rv = 1;
 err:
-    if (data) {
-        OPENSSL_free(data);
-        data = NULL;
-    }
-    if (copybuffer) {
-        OPENSSL_free(copybuffer);
-        copybuffer = NULL;
-    }
-    if (tbs) {
-        X509_free(tbs);
-        tbs = NULL;
-    }
-    if (pkeybuffer) {
-        OPENSSL_free(pkeybuffer);
-        pkeybuffer = NULL;
-    }
+    OPENSSL_free(data);
+    OPENSSL_free(copybuffer);
+    X509_free(tbs);
+    OPENSSL_free(pkeybuffer);
+
     return rv;
 }
 
-EVP_PKEY *CT_get_public_key_that_signed(X509_STORE_CTX *ctx)
+EVP_PKEY *CT_get_public_key_that_signed(const X509_STORE_CTX *ctx)
 {
     EVP_PKEY *rv = NULL;
     X509 *cert = NULL;
@@ -983,10 +961,8 @@ EVP_PKEY *CT_get_public_key_that_signed(X509_STORE_CTX *ctx)
     else
         ERR_clear_error(); /* big whoop, didn't expect this to pass anyway */
 
-    if (rv != NULL) {
-        EVP_PKEY_free(rv);
-        rv = NULL;
-    }
+    EVP_PKEY_free(rv);
+    rv = NULL;
 
     if (ctx->chain == NULL)
         goto end;
@@ -997,10 +973,8 @@ EVP_PKEY *CT_get_public_key_that_signed(X509_STORE_CTX *ctx)
             goto end;
         } else
             ERR_clear_error(); /* no biggie, though curious why first doesn't pass */
-        if (rv != NULL) {
-            EVP_PKEY_free(rv);
-            rv = NULL;
-        }
+        EVP_PKEY_free(rv);
+        rv = NULL;
     }
 end:
 err:
@@ -1039,7 +1013,7 @@ int CT_validate_connection(SSL *s)
     } else {
         int successful_validated_count = 0;
         if (parse_scts) {
-            STACK_OF(CTSCT) *scts = SSL_get_peer_scts(s);
+	    const STACK_OF(CTSCT) *scts = SSL_get_peer_scts(s);
             int count_scts = scts ? sk_CTSCT_num(scts) : 0;
             int i;
             for (i = 0; i < count_scts; i++) {
@@ -1112,7 +1086,7 @@ static void timestamp_print(BIO *out, uint64_t timestamp)
 }
 
 /* Adopted from code by Rob Stradling (rob@comodo.com) "v3_scts.c" */
-void CT_print_sct(BIO *out, CTSCT *sct)
+void CT_print_sct(BIO *out, const CTSCT *sct)
 {
     int indent = 0;
 

@@ -90,14 +90,12 @@ CTLOG_STORE *CTLOG_STORE_new(void)
         goto err;
     return rv;
 err:
-    if (rv) {
-        CTLOG_STORE_free(rv);
-        rv = NULL;
-    }
+    CTLOG_STORE_free(rv);
+
     return NULL;
 }
 
-int CTLOG_write_bio(BIO *out, CTLOG *log)
+int CTLOG_write_bio(BIO *out, const CTLOG *log)
 {
     int rv = -1;
     int byte_count = 0;
@@ -160,24 +158,19 @@ int CTLOG_write_bio(BIO *out, CTLOG *log)
     rv = byte_count;
 
 err:
-    if (tmp) {
-        BIO_free_all(tmp);
-        tmp = NULL;
-    }
-    if (res) {
-        BUF_MEM_free(res);
-        res = NULL;
-    }
+    BIO_free_all(tmp);
+    BUF_MEM_free(res);
+
     return rv;
 }
 
-CTLOG *CTLOG_create_log_from_json_fragment(JSON_FRAGMENT *log)
+CTLOG *CTLOG_create_log_from_json_fragment(const JSON_FRAGMENT *log)
 {
     CTLOG *rv = NULL;
     char *derpk = NULL;
     if (log) {
-        JSON_FRAGMENT *name = CT_json_get_value(log, "description");
-        JSON_FRAGMENT *pk = CT_json_get_value(log, "key");
+        const JSON_FRAGMENT *name = CT_json_get_value(log, "description");
+        const JSON_FRAGMENT *pk = CT_json_get_value(log, "key");
 
         if (name && pk && name->type == VAL_STRING &&
             pk->type == VAL_STRING && name->buffer && pk->buffer) {
@@ -193,23 +186,16 @@ CTLOG *CTLOG_create_log_from_json_fragment(JSON_FRAGMENT *log)
                     CTerr(CT_F_CTLOG_CREATE_LOG_FROM_JSON_FRAGMENT, CT_R_LOG_ERROR);
                     goto err;
                 }
-                if (derpk) {
-                    OPENSSL_free(derpk);
-                    derpk = NULL;
-                }
+                OPENSSL_free(derpk);
+                derpk = NULL;
                 return rv;
             }
         }
     }
 err:
-    if (derpk) {
-        OPENSSL_free(derpk);
-        derpk = NULL;
-    }
-    if (rv) {
-        CTLOG_free(rv);
-        rv = NULL;
-    }
+    OPENSSL_free(derpk);
+    CTLOG_free(rv);
+
     return NULL;
 }
 
@@ -222,7 +208,7 @@ int CTLOG_STORE_load_file(SSL_CTX *ctx, char *fpath)
     BUF_MEM *ptr;
     char buf[READ_BUFFER];
     int amt_read;
-    JSON_FRAGMENT *logs;
+    const JSON_FRAGMENT *logs;
 
     if (fpath == NULL)
         goto err;
@@ -271,18 +257,9 @@ int CTLOG_STORE_load_file(SSL_CTX *ctx, char *fpath)
 
     rv = 1;
 err:
-    if (json) {
-        JSON_FRAGMENT_free(json);
-        json = NULL;
-    }
-    if (in) {
-        BIO_free_all(in);
-        in = NULL;
-    }
-    if (mem) {
-        BIO_free_all(mem);
-        mem = NULL;
-    }
+    JSON_FRAGMENT_free(json);
+    BIO_free_all(in);
+    BIO_free_all(mem);
 
     return rv;
 }
@@ -301,8 +278,8 @@ int CTLOG_STORE_set_default_paths(SSL_CTX *ctx)
 /*
  * Initialize a new CTLOG object. Copies all needed data.
  */
-CTLOG *CTLOG_new(char *pk, uint16_t pkey_len,
-                 char *name, uint16_t name_len)
+CTLOG *CTLOG_new(const char *pk, uint16_t pkey_len,
+                 const char *name, uint16_t name_len)
 {
     const unsigned char *p = (const unsigned char *)pk;
     CTLOG *rv = OPENSSL_malloc(sizeof(CTLOG));
@@ -327,14 +304,12 @@ err:
 void CTLOG_free(CTLOG *log)
 {
     if (log) {
-        if (log->public_key) {
-            EVP_PKEY_free(log->public_key);
-            log->public_key = NULL;
-        }
-        if (log->name) {
-            OPENSSL_free(log->name);
-            log->name = NULL;
-        }
+        EVP_PKEY_free(log->public_key);
+        log->public_key = NULL;
+
+        OPENSSL_free(log->name);
+        log->name = NULL;
+
         OPENSSL_free(log);
     }
 }
@@ -343,7 +318,7 @@ void CTLOG_free(CTLOG *log)
  * Given a log ID, find a pointer to a matching log.
  * Return NULL if none found. Do not attempt to free the result.
  */
-CTLOG *CT_get_log_by_id(SSL_CTX *ctx, uint8_t *id)
+CTLOG *CT_get_log_by_id(const SSL_CTX *ctx, const uint8_t *id)
 {
     int i;
     for (i = 0; i < sk_CTLOG_num(ctx->ctlog_store->logs); i++) {

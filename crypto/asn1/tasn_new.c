@@ -71,7 +71,7 @@ static int asn1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
 static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
 static void asn1_primitive_clear(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
-ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it)
+const ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it)
 {
     ASN1_VALUE *ret = NULL;
     if (ASN1_item_ex_new(&ret, it) > 0)

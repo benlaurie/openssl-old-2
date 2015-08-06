@@ -89,7 +89,8 @@ int ASN1_item_ndef_i2d(ASN1_VALUE *val, unsigned char **out,
     return asn1_item_flags_i2d(val, out, it, ASN1_TFLG_NDEF);
 }
 
-int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it)
+int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out,
+                  const ASN1_ITEM *it)
 {
     return asn1_item_flags_i2d(val, out, it, 0);
 }

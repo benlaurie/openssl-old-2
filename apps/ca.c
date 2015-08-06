@@ -152,7 +152,7 @@ static int certify(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
                    long days, int batch, char *ext_sect, CONF *conf,
                    int verbose, unsigned long certopt, unsigned long nameopt,
                    int default_op, int ext_copy, int selfsign, int precert,
-                   int add_scts, STACK_OF(CTSCT) *scts);
+                   int add_scts, const STACK_OF(CTSCT) *scts);
 static int certify_cert(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
                         const EVP_MD *dgst, STACK_OF(OPENSSL_STRING) *sigopts,
                         STACK_OF(CONF_VALUE) *policy, CA_DB *db,
@@ -162,7 +162,7 @@ static int certify_cert(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
                         CONF *conf, int verbose, unsigned long certopt,
                         unsigned long nameopt, int default_op, int ext_copy,
                         ENGINE *e, int selfsign, int precert, int add_scts,
-                        STACK_OF(CTSCT) *scts);
+                        const STACK_OF(CTSCT) *scts);
 static int certify_spkac(X509 **xret, char *infile, EVP_PKEY *pkey,
                          X509 *x509, const EVP_MD *dgst,
                          STACK_OF(OPENSSL_STRING) *sigopts,
@@ -182,7 +182,7 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509,
                    int batch, int verbose, X509_REQ *req, char *ext_sect,
                    CONF *conf, unsigned long certopt, unsigned long nameopt,
                    int default_op, int ext_copy, int selfsign, int precert,
-                   int add_scts, STACK_OF(CTSCT) *scts);
+                   int add_scts, const STACK_OF(CTSCT) *scts);
 static int do_revoke(X509 *x509, CA_DB *db, int ext, char *extval);
 static int get_certificate_status(const char *ser_status, CA_DB *db);
 static int do_updatedb(CA_DB *db);
@@ -190,7 +190,7 @@ static int check_time_format(const char *str);
 char *make_revocation_str(int rev_type, char *rev_arg);
 int make_revoked(X509_REVOKED *rev, const char *str);
 static int old_entry_print(ASN1_OBJECT *obj, ASN1_STRING *str);
-int add_sct_extensions(X509 *ret, STACK_OF(CTSCT) *scts);
+static int add_sct_extensions(X509 *ret, const STACK_OF(CTSCT) *scts);
 
 static CONF *conf = NULL;
 static CONF *extconf = NULL;
@@ -1362,7 +1362,7 @@ static int certify(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
                    long days, int batch, char *ext_sect, CONF *lconf,
                    int verbose, unsigned long certopt, unsigned long nameopt,
                    int default_op, int ext_copy, int selfsign, int precert,
-                   int add_scts, STACK_OF(CTSCT) *scts)
+                   int add_scts, const STACK_OF(CTSCT) *scts)
 {
     X509_REQ *req = NULL;
     BIO *in = NULL;
@@ -1431,7 +1431,7 @@ static int certify_cert(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
                         CONF *lconf, int verbose, unsigned long certopt,
                         unsigned long nameopt, int default_op, int ext_copy,
                         ENGINE *e, int selfsign, int precert, int add_scts,
-                        STACK_OF(CTSCT) *scts)
+                        const STACK_OF(CTSCT) *scts)
 {
     X509 *req = NULL;
     X509_REQ *rreq = NULL;
@@ -1486,7 +1486,8 @@ static int certify_cert(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
     return (ok);
 }
 
-X509_EXTENSION *create_sct_list_X509_extension(int nid, STACK_OF(CTSCT) *scts)
+X509_EXTENSION *create_sct_list_X509_extension(int nid,
+					       const STACK_OF(CTSCT) *scts)
 {
     BIO *mem = NULL;
     ASN1_OCTET_STRING *os = NULL;
@@ -1528,26 +1529,15 @@ X509_EXTENSION *create_sct_list_X509_extension(int nid, STACK_OF(CTSCT) *scts)
 
     /* TODO(aeijdenberg) memory handling for os and ext */
 err:
-    if (mem) {
-        BIO_free_all(mem);
-        mem = NULL;
-    }
-    if (os) {
-        ASN1_OCTET_STRING_free(os);
-        os = NULL;
-    }
-    if (os2) {
-        ASN1_OCTET_STRING_free(os2);
-        os2 = NULL;
-    }
-    if (d) {
-        OPENSSL_free(d);
-        d = NULL;
-    }
+    BIO_free_all(mem);
+    ASN1_OCTET_STRING_free(os);
+    ASN1_OCTET_STRING_free(os2);
+    OPENSSL_free(d);
+
     return ext;
 }
 
-int add_sct_extensions(X509 *ret, STACK_OF(CTSCT) *scts)
+static int add_sct_extensions(X509 *ret, const STACK_OF(CTSCT) *scts)
 {
     int rv = 0;
     X509_EXTENSION *ext = NULL;
@@ -1570,11 +1560,10 @@ int add_sct_extensions(X509 *ret, STACK_OF(CTSCT) *scts)
         rv = 1;
         /* TODO(aeijdenberg) memory handling for os and ext */
     }
+    
 err:
-    if (ext) {
-        X509_EXTENSION_free(ext);
-        ext = NULL;
-    }
+    X509_EXTENSION_free(ext);
+
     return rv;
 }
 
@@ -1586,7 +1575,7 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509,
                    int batch, int verbose, X509_REQ *req, char *ext_sect,
                    CONF *lconf, unsigned long certopt, unsigned long nameopt,
                    int default_op, int ext_copy, int selfsign, int precert,
-                   int add_scts, STACK_OF(CTSCT) *scts)
+                   int add_scts, const STACK_OF(CTSCT) *scts)
 {
     X509_NAME *name = NULL, *CAname = NULL, *subject = NULL, *dn_subject =
         NULL;
@@ -2038,14 +2027,8 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509,
                 goto end;
             }
             /* TODO(aeijdenberg) is this right? */
-            if (os) {
-                ASN1_OCTET_STRING_free(os);
-                os = NULL;
-            }
-            if (ext) {
-                X509_EXTENSION_free(ext);
-                ext = NULL;
-            }
+	    ASN1_OCTET_STRING_free(os);
+	    X509_EXTENSION_free(ext);
         }
     }
 
@@ -2054,7 +2037,6 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509,
         if (!X509_set_subject_name(ret, dn_subject))
             goto end;
     }
-
 
 signing_time:
     if (!default_op) {
@@ -2113,10 +2095,9 @@ signing_time:
         row[DB_rev_date] = NULL;
 
         /* row[DB_serial] done already */
-        if (row[DB_serial]) {
-            OPENSSL_free(row[DB_serial]);
-            row[DB_serial] = NULL;
-        }
+	OPENSSL_free(row[DB_serial]);
+	row[DB_serial] = NULL;
+
         bn = ASN1_INTEGER_to_BN(X509_get_serialNumber(ret), NULL);
         if (!bn)
             goto end;
