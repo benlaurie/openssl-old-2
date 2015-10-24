@@ -45,12 +45,12 @@
 #include <sys/types.h>
 #ifdef HAVE_CRYPTODEV
 # include <crypto/cryptodev.h>
+# include <sys/ioctl.h>
 #endif
 #include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
-#include <sys/ioctl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
