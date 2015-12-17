@@ -19,17 +19,22 @@ my $std_openssl_cnf = top_file("apps", "openssl.cnf");
 
 remove_tree("demoCA", { safe => 0 });
 
-plan tests => 4;
+plan tests => 5;
  SKIP: {
      $ENV{OPENSSL_CONFIG} = "-config ".top_file("test", "CAss.cnf");
-     skip "failed creating CA structure", 3
+     skip "failed creating CA structure", 4
 	 if !is(system("$perl ".$CA_pl." -newca < ".devnull()." 2>&1"), 0,
 		'creating CA structure');
 
      $ENV{OPENSSL_CONFIG} = "-config ".top_file("test", "Uss.cnf");
-     skip "failed creating new certificate request", 2
+     skip "failed creating new certificate request", 3
 	 if !is(system("$perl ".$CA_pl." -newreq 2>&1"), 0,
 		'creating new certificate request');
+
+     $ENV{OPENSSL_CONFIG} = "-config ".$std_openssl_cnf;
+     skip "succeeded in signing certificate request with bad start date", 2
+	 if is(yes("$perl ".$CA_pl." -sign -startdate 150101010101 2>&1"), 0,
+               'signing certificate request');
 
      $ENV{OPENSSL_CONFIG} = "-config ".$std_openssl_cnf;
      skip "failed to sign certificate request", 1
